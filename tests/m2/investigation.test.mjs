@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { EventBus } from '../../js/v2/m2/core/EventBus.js';
-import { createInitialGameState } from '../../js/v2/m2/core/GameState.js';
-import { MemorySaveAdapter, SaveManager } from '../../js/v2/m2/core/SaveManager.js';
-import { FileSystemService } from '../../js/v2/m2/omega-os/FileSystemService.js';
-import { WorldBindingSystem } from '../../js/v2/m2/world/WorldBinding.js';
+import { EventBus } from '../../js/v2/runtime/core/EventBus.js';
+import { createInitialGameState } from '../../js/v2/runtime/core/GameState.js';
+import { MemorySaveAdapter, SaveManager } from '../../js/v2/runtime/core/SaveManager.js';
+import { FileSystemService } from '../../js/v2/runtime/omega-os/FileSystemService.js';
+import { WorldBindingSystem } from '../../js/v2/runtime/world/WorldBinding.js';
 
 const fsDefinition = JSON.parse(await readFile(new URL('../../data/v2/filesystem-m2.json', import.meta.url), 'utf8'));
 const bindingsDefinition = JSON.parse(await readFile(new URL('../../data/v2/world-bindings-m2.json', import.meta.url), 'utf8'));

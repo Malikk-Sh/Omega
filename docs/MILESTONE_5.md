@@ -1,6 +1,6 @@
 # OMEGA — Milestone 5: VERSIONS
 
-Status: foundation in progress on a stacked branch above M4. The first data/state regression is implemented; additional 3D snapshot traversal is not yet part of this slice.
+Status: foundation in progress on a stacked branch above M4. The first data/state/routing regressions are implemented; additional 3D snapshot traversal is not yet part of this slice.
 
 ## Purpose
 
@@ -20,6 +20,7 @@ VERA_4_1 — Containment Night / incident reconstruction
 - Added authored `data/v2/versions-m5.json`.
 - Added stable IDs, scene IDs, environment roles, puzzle IDs, unlock flags and completion flags for 0.3 / 1.0 / 2.6 / 4.1.
 - Added `VersionsProtocol.ts` as framework-free story/state logic.
+- Added `VersionRoute.ts` as a renderer-independent route contract.
 - Added M5 save defaults without changing save schema version.
 - M5 state upgrade does not change the current scene or checkpoint.
 - Existing M4 completion state is preserved.
@@ -30,6 +31,10 @@ VERA_4_1 — Containment Night / incident reconstruction
   - VERA_2_6 completion exposes 4.1.
 - Duplicate version IDs and scene IDs are rejected by definition validation.
 - Authored version order is validated so content cannot silently reorder the narrative arc.
+- Route targets are validated as unique and forbidden from aliasing canonical HOME.
+- Routable snapshots are derived from canonical unlock flags; adding a newly unlocked authored version does not require a new hardcoded route branch.
+- Locked route resolution returns the exact canonical flag that still gates the version.
+- All version routes declare HOME as the canonical return scene.
 
 ## VERA_1_0 puzzle foundation — Synthetic Photograph
 
@@ -90,23 +95,29 @@ A completed M4 save therefore unlocks VERA_1_0 immediately after M5 upgrade with
 `tests/m5/versions.test.mjs` verifies:
 
 1. authored version data validates;
-2. M4 state survives M5 upgrade;
-3. M5 upgrade does not move scene/checkpoint;
-4. VERA_1_0 unlocks after M4 completion;
-5. VERA_2_6 and VERA_4_1 remain gated in order;
-6. synthetic-photo generated elements are derived correctly;
-7. partial/over/unknown selections fail;
-8. correct selection succeeds independent of order/duplicate taps;
-9. reward clue ID is deterministic;
-10. M5 puzzle flags/counters persist through SaveManager;
-11. upgrading an older completed-M4 save adds defaults without fake M5 progress.
+2. version route targets validate;
+3. M4 state survives M5 upgrade;
+4. M5 upgrade does not move scene/checkpoint;
+5. VERA_1_0 unlocks after M4 completion;
+6. VERA_2_6 and VERA_4_1 remain gated in order;
+7. routable version list is derived from canonical unlock flags;
+8. locked versions cannot resolve a route;
+9. newly unlocked versions become routable from authored scene metadata without router-specific conditionals;
+10. every version route returns to canonical HOME;
+11. synthetic-photo generated elements are derived correctly;
+12. partial/over/unknown selections fail;
+13. correct selection succeeds independent of order/duplicate taps;
+14. reward clue ID is deterministic;
+15. M5 puzzle flags/counters persist through SaveManager;
+16. upgrading an older completed-M4 save adds defaults without fake M5 progress.
 
 The repository Vercel integration reached its deployment-rate limit while this stacked branch was being built. That status is infrastructure-only (`Deployment rate limited — retry in 24 hours`), not a compiler/test failure.
 
-To avoid treating the rate limit as validation, the new M5 TypeScript modules were independently compiled with TypeScript 5.8.3 and the isolated Node regression passed:
+To avoid treating the rate limit as validation, the new M5 TypeScript modules were independently compiled with TypeScript 5.8.3 and isolated Node regressions passed:
 
 ```text
 M5 isolated regression: PASS
+M5 route contract isolated regression: PASS
 ```
 
 M1–M4 remained green on the final M4 implementation commit before the external rate limit was reached.
@@ -115,7 +126,7 @@ M1–M4 remained green on the final M4 implementation commit before the external
 
 Wire VERA_1_0 into the existing scene lifecycle:
 
-- generalize `SceneRouter` from one backup target to authored version scene IDs;
+- connect the generic version route contract to the transactional M4 `SceneRouter` rather than creating a second navigation system;
 - add a version-selection surface that only exposes unlocked snapshots;
 - build a distinct Summer House primitive environment rather than recoloring HOME;
 - stage V.E.R.A. 1.0 as a more socially developed but still trusting version;

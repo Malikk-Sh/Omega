@@ -34,8 +34,10 @@ export function evaluateBackup03Classification(value: string): Backup03Evaluatio
 }
 
 export function upgradeStateForBackup03(state: OmegaGameState): void {
-  const resumeBackup = state.world.activeScene === BACKUP_03_SCENE;
-  state.world.activeScene = resumeBackup ? BACKUP_03_SCENE : HOME_SCENE;
+  const incomingScene = state.world.activeScene;
+  const resumeBackup03 = incomingScene === BACKUP_03_SCENE;
+  const laterVersionScene = /^backup_\d+_\d+$/.test(incomingScene) && !resumeBackup03;
+  if (!resumeBackup03 && !laterVersionScene) state.world.activeScene = HOME_SCENE;
 
   const booleanDefaults: Record<string, boolean> = {
     m1_intro_seen: false,
@@ -78,6 +80,8 @@ export function upgradeStateForBackup03(state: OmegaGameState): void {
   if (typeof state.flags.null_affinity !== "number") state.flags.null_affinity = 0;
   if (typeof state.flags.m3_route_attempts !== "number") state.flags.m3_route_attempts = 0;
   if (typeof state.flags.m4_classification_attempts !== "number") state.flags.m4_classification_attempts = 0;
+
+  if (laterVersionScene) return;
 
   if (state.world.activeScene === BACKUP_03_SCENE) {
     if (state.flags.m4_truth_choice_made === true) state.checkpoint = "m4_return_home";

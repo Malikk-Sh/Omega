@@ -15,7 +15,7 @@
 7. [`SOURCE_INDEX.md`](./SOURCE_INDEX.md) — ссылки на актуальный код, data, tests, UI и assets.
 8. [`ASSET_BACKLOG.md`](./ASSET_BACKLOG.md) — состояние UI/art/audio pipeline.
 9. [`CONTEXT_MANIFEST.json`](./CONTEXT_MANIFEST.json) — machine-readable snapshot и SHA-256 важных файлов.
-10. [`RECENT_CHANGES.md`](./RECENT_CHANGES.md) — последние commit-сообщения исходного проекта.
+10. [`RECENT_CHANGES.md`](./RECENT_CHANGES.md) — последние substantive commit-сообщения проекта.
 
 ## Source of truth priority
 
@@ -70,7 +70,31 @@ npm run ai:sync
 npm run ai:check
 ```
 
-На `main` GitHub Action `.github/workflows/sync-ai-context.yml` запускает синхронизацию автоматически после push и коммитит изменившиеся generated-файлы.
+На `main` GitHub Action `.github/workflows/sync-ai-context.yml` запускает синхронизацию автоматически после substantive push и коммитит изменившиеся generated-файлы отдельным commit:
+
+```text
+chore(ai-context): auto-sync [skip ci]
+```
+
+### Как понимать `sourceCommit`
+
+Generated context описывает **substantive commit**, из которого он был построен. Поэтому обычное состояние истории выглядит так:
+
+```text
+<substantive game/docs commit>   ← PROJECT_SNAPSHOT.sourceCommit
+        ↓
+chore(ai-context): auto-sync     ← current main HEAD
+```
+
+То есть `main` может совершенно корректно быть на один generated-only commit впереди `sourceCommit`. Это **не означает**, что контекст устарел.
+
+Каноническая проверка свежести:
+
+```bash
+npm run ai:check
+```
+
+Дополнительно `CONTEXT_MANIFEST.json` содержит SHA-256 важных source/data/test/config файлов. Если `ai:check` проходит, generated bundle соответствует текущему substantive состоянию проекта.
 
 ### Автоматически генерируются
 

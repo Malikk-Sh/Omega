@@ -4,7 +4,7 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "rootDir": "src",
-    "outDir": "js/v2/m0",
+    "outDir": "js/v2/m1",
     "strict": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,

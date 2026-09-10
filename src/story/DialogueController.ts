@@ -37,9 +37,11 @@ export class DialogueController {
     this.active = true;
     this.choosing = false;
     this.inputLockedUntil = performance.now() + OPEN_INPUT_GUARD_MS;
+    this.root.dataset.dialogueMode = "linear";
     this.showRoot();
     this.setChoiceUI([]);
     this.setNextVisible(true);
+    this.setHintVisible(true);
     this.renderCurrent();
     return new Promise<void>(resolve => { this.resolveCurrent = resolve; });
   }
@@ -50,8 +52,10 @@ export class DialogueController {
     this.active = true;
     this.choosing = true;
     this.inputLockedUntil = performance.now() + OPEN_INPUT_GUARD_MS;
+    this.root.dataset.dialogueMode = "choice";
     this.showRoot();
     this.setNextVisible(false);
+    this.setHintVisible(false);
     this.renderCurrent();
     this.setChoiceUI(options);
     return new Promise<string>(resolve => { this.resolveChoice = resolve; });
@@ -110,6 +114,11 @@ export class DialogueController {
   private setNextVisible(visible: boolean): void {
     const next = this.root.querySelector<HTMLElement>("[data-dialogue-next]");
     if (next) next.hidden = !visible;
+  }
+
+  private setHintVisible(visible: boolean): void {
+    const hint = this.root.querySelector<HTMLElement>("[data-dialogue-hint]");
+    if (hint) hint.hidden = !visible;
   }
 
   private showRoot(): void {

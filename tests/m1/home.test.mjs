@@ -5,6 +5,7 @@ import { createInitialGameState } from '../../js/v2/m1/core/GameState.js';
 import { MemorySaveAdapter, SaveManager } from '../../js/v2/m1/core/SaveManager.js';
 import { FileSystemService } from '../../js/v2/m1/omega-os/FileSystemService.js';
 import { WorldBindingSystem } from '../../js/v2/m1/world/WorldBinding.js';
+import { DialogueController } from '../../js/v2/m1/story/DialogueController.js';
 
 const fsDefinition = JSON.parse(await readFile(new URL('../../data/v2/filesystem-m1.json', import.meta.url), 'utf8'));
 const bindingsDefinition = JSON.parse(await readFile(new URL('../../data/v2/world-bindings-m1.json', import.meta.url), 'utf8'));
@@ -45,5 +46,35 @@ assert.equal(visibleAfterLoad, false, 'Deleted memory must remain absent after l
 
 assert.equal(filesystemAfterLoad.restoreFile('/memories/sea_2017.img'), true);
 assert.equal(visibleAfterLoad, true, 'Restoring SEA 2017 must restore the world frame');
+
+// Regression: the same physical tap that opens dialogue must not skip line 1.
+const speakerNode = { textContent: '' };
+const textNode = { textContent: '' };
+const portraitNode = { src: '' };
+const nextNode = { addEventListener() {} };
+const root = {
+  hidden: true,
+  setAttribute() {},
+  querySelector(selector) {
+    if (selector === '[data-dialogue-next]') return nextNode;
+    if (selector === '[data-dialogue-speaker]') return speakerNode;
+    if (selector === '[data-dialogue-text]') return textNode;
+    if (selector === '[data-dialogue-portrait]') return portraitNode;
+    return null;
+  }
+};
+const dialogue = new DialogueController(root);
+const dialogueDone = dialogue.play([
+  { speaker: 'V.E.R.A.', text: 'FIRST' },
+  { speaker: 'V.E.R.A.', text: 'SECOND' }
+]);
+dialogue.advance();
+assert.equal(textNode.textContent, 'FIRST', 'opening tap must not advance the first dialogue line');
+await new Promise(resolve => setTimeout(resolve, 210));
+dialogue.advance();
+assert.equal(textNode.textContent, 'SECOND', 'a later deliberate input must advance dialogue');
+dialogue.advance();
+await dialogueDone;
+assert.equal(dialogue.isActive(), false, 'dialogue should still finish normally after the guard');
 
 console.log('M1 HOME regression: PASS');

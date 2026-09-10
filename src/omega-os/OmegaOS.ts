@@ -9,6 +9,14 @@ export interface ProcessMonitorState {
   routeAttempts: number;
   message?: string;
 }
+export interface Backup03MonitorState {
+  active: boolean;
+  samplesSeen: number;
+  totalSamples: number;
+  solved: boolean;
+  attempts: number;
+  message?: string;
+}
 export interface OmegaOSCallbacks {
   onSaveRequested: () => void;
   onResetRequested: () => void;
@@ -17,9 +25,15 @@ export interface OmegaOSCallbacks {
   onRecoveryRequested?: (key: string) => RecoveryResponse;
   getProcessMonitorState?: () => ProcessMonitorState;
   onProcessRouteRequested?: (route: string) => RecoveryResponse;
+  getBackup03State?: () => Backup03MonitorState;
+  onBackupClassificationRequested?: (classification: string) => RecoveryResponse;
 }
 
 type PreviewMode = "text" | "evidence";
+
+const BACKUP_03_ROOT = "/backups/vera_0_3";
+const BACKUP_03_TRAINING = `${BACKUP_03_ROOT}/training`;
+const BACKUP_03_ARCHIVE = `${BACKUP_03_ROOT}/archive`;
 
 export class OmegaOS {
   private visible = false;
@@ -28,6 +42,7 @@ export class OmegaOS {
   private currentDirectory = "/memories";
   private recoveryMessage = "";
   private processMessage = "";
+  private backupMessage = "";
   private readonly subscriptions: Unsubscribe[] = [];
 
   constructor(
@@ -50,35 +65,47 @@ export class OmegaOS {
     this.events.emit("os:visibility", { visible });
   }
 
+  openDirectory(path: string): void {
+    this.currentDirectory = path;
+    this.previewPath = null;
+    this.setVisible(true);
+  }
+
   toggle(): void { this.setVisible(!this.visible); }
 
   render(): void {
     const processState = this.callbacks.getProcessMonitorState?.() ?? { unlocked: false, channelOpen: false, routeAttempts: 0 };
+    const backupState = this.callbacks.getBackup03State?.() ?? { active: false, samplesSeen: 0, totalSamples: 3, solved: false, attempts: 0 };
+    const inBackupPath = this.currentDirectory.startsWith(BACKUP_03_ROOT);
+
+    if (backupState.active && !inBackupPath) this.currentDirectory = BACKUP_03_TRAINING;
+    if (!backupState.active && inBackupPath) this.currentDirectory = "/memories";
     if (this.currentDirectory === "/system/processes" && !processState.unlocked) this.currentDirectory = "/system/logs";
 
     const entries = this.filesystem.listDirectory(this.currentDirectory, true);
     const preview = this.previewPath ? this.filesystem.readFile(this.previewPath) : null;
     const inProcessMonitor = this.currentDirectory === "/system/processes";
+    const inBackupTraining = this.currentDirectory === BACKUP_03_TRAINING;
+    const workspace = backupState.active ? "BACKUP MANAGER / VERA_0_3" : "INVESTIGATION WORKSPACE / HOME";
 
     this.root.innerHTML = `
-      <section class="m0-os-window m2-os-window m3-os-window" role="dialog" aria-label="OMEGA OS">
+      <section class="m0-os-window m2-os-window m3-os-window ${backupState.active ? "m4-os-window" : ""}" role="dialog" aria-label="OMEGA OS">
         <header class="m0-os-header">
-          <div><strong>Ω OMEGA OS</strong><small>INVESTIGATION WORKSPACE / HOME</small></div>
+          <div><strong>Ω OMEGA OS</strong><small>${workspace}</small></div>
           <button class="m0-icon-btn" type="button" data-os-close aria-label="Закрыть OMEGA OS">×</button>
         </header>
         <nav class="m2-os-nav" aria-label="OMEGA directories">
-          ${this.directoryButton("/memories", "MEMORY")}
-          ${this.directoryButton("/system/logs", "SYSTEM LOGS")}
-          ${processState.unlocked ? this.directoryButton("/system/processes", "PROCESS") : ""}
+          ${backupState.active ? this.backupNavigation(backupState) : this.homeNavigation(processState)}
         </nav>
         <div class="m0-os-toolbar m2-os-toolbar">
-          <span>${inProcessMonitor ? "Process Monitor" : "Explorer"}</span><code>${this.escape(this.currentDirectory)}</code>
-          <div class="m2-toolbar-actions"><button type="button" data-os-save>Сохранить</button><button type="button" data-os-reset>Сбросить HOME</button></div>
+          <span>${inProcessMonitor ? "Process Monitor" : inBackupTraining ? "Training Console" : "Explorer"}</span><code>${this.escape(this.currentDirectory)}</code>
+          <div class="m2-toolbar-actions"><button type="button" data-os-save>Сохранить</button><button type="button" data-os-reset>${backupState.active ? "Сбросить игру" : "Сбросить HOME"}</button></div>
         </div>
         ${inProcessMonitor ? this.processMonitor(processState, entries) : this.fileList(entries)}
         ${preview ? this.preview(preview) : ""}
-        ${inProcessMonitor ? "" : this.recoveryConsole()}
-        <footer class="m0-os-status">${inProcessMonitor ? "PROCESS view reconstructed from cold-index evidence. Route changes may alter HOME." : "HOME отражает состояние индексированных файлов. Не все изменения обратимы."}</footer>
+        ${inBackupTraining ? this.backupClassifier(backupState) : ""}
+        ${!inProcessMonitor && !backupState.active ? this.recoveryConsole() : ""}
+        <footer class="m0-os-status">${this.footerText(backupState, inProcessMonitor)}</footer>
       </section>`;
     this.bindEvents();
   }
@@ -137,6 +164,24 @@ export class OmegaOS {
         this.render();
       });
     });
+
+    this.root.querySelectorAll<HTMLElement>("[data-backup-classification]").forEach(button => {
+      button.addEventListener("click", () => {
+        const result = this.callbacks.onBackupClassificationRequested?.(button.dataset.backupClassification ?? "") ?? { ok: false, message: "CLASSIFIER OFFLINE" };
+        this.backupMessage = result.message;
+        this.previewPath = null;
+        if (result.ok) this.currentDirectory = BACKUP_03_ARCHIVE;
+        this.render();
+      });
+    });
+  }
+
+  private homeNavigation(processState: ProcessMonitorState): string {
+    return `${this.directoryButton("/memories", "MEMORY")}${this.directoryButton("/system/logs", "SYSTEM LOGS")}${processState.unlocked ? this.directoryButton("/system/processes", "PROCESS") : ""}`;
+  }
+
+  private backupNavigation(state: Backup03MonitorState): string {
+    return `${this.directoryButton(BACKUP_03_TRAINING, "TRAINING")}${state.solved ? this.directoryButton(BACKUP_03_ARCHIVE, "ARCHIVE") : ""}`;
   }
 
   private directoryButton(path: string, label: string): string {
@@ -182,6 +227,18 @@ export class OmegaOS {
     const puzzle = `<div class="m3-route-puzzle"><p>Восстанови инициатора quarantine request по журналу recovery_1703.log. VERA_CORE отклонила запрос — она не была источником.</p><div class="m3-route-options"><button type="button" data-process-route="vera">VERA_CORE → NULL</button><button type="button" data-process-route="system">SYSTEM → NULL</button><button type="button" data-process-route="null">NULL → SYSTEM</button></div></div>`;
     const opened = `<div class="m3-route-open"><strong>ROUTE RECONSTRUCTED</strong><code>SYSTEM → NULL</code><span>HOME topology changed.</span></div>${channel ? this.entry(channel) : ""}`;
     return `<main class="m3-process-monitor"><section class="m3-process-card ${state.channelOpen ? "is-open" : "is-quarantined"}"><header><div><strong>PROCESS // NULL</strong><small>UNINDEXED SECONDARY READER</small></div><span>${state.channelOpen ? "CHANNEL OPEN" : "QUARANTINED"}</span></header><div class="m3-process-grid"><div><small>PID</small><code>0031</code></div><div><small>SIGNATURE</small><code>NULL</code></div><div><small>LAST EVENT</small><code>04:12:14</code></div><div><small>BYTES LOST</small><code>31</code></div></div>${state.channelOpen ? opened : puzzle}<output class="m3-process-output">${this.escape(this.processMessage || state.message || (state.channelOpen ? "LINK STABLE // LISTENING" : "ROUTE REQUIRED"))}</output></section></main>`;
+  }
+
+  private backupClassifier(state: Backup03MonitorState): string {
+    const ready = state.samplesSeen >= state.totalSamples;
+    const solved = state.solved;
+    return `<section class="m4-classifier" aria-label="VERA 0.3 classification console"><header><div><strong>CLASSIFICATION TRAINER</strong><small>VERA_0_3 // HUMAN_CONTEXT</small></div><span>${solved ? "TOKEN ISSUED" : ready ? "READY" : `${state.samplesSeen}/${state.totalSamples}`}</span></header><p>${solved ? "Категория подтверждена. Старый архив HUMAN_CONTEXT смонтирован." : ready ? "Три физических образца изучены. Какая категория сохраняет их смысл отдельно от исполняемой функции?" : "Сначала изучи три физических образца в sandbox. Консоль принимает решение только после полного training set."}</p><div class="m4-classifier-options"><button type="button" data-backup-classification="memory" ${ready && !solved ? "" : "disabled"}>MEMORY</button><button type="button" data-backup-classification="service" ${ready && !solved ? "" : "disabled"}>SERVICE</button><button type="button" data-backup-classification="noise" ${ready && !solved ? "" : "disabled"}>NOISE</button></div><output>${this.escape(this.backupMessage || state.message || (solved ? "HUMAN_CONTEXT → MEMORY" : ready ? "AWAITING CLASSIFICATION" : "TRAINING SET INCOMPLETE"))}</output></section>`;
+  }
+
+  private footerText(backupState: Backup03MonitorState, inProcessMonitor: boolean): string {
+    if (backupState.active) return "VERA_0_3 is an isolated snapshot. Physical samples and indexed labels describe the same training state.";
+    if (inProcessMonitor) return "PROCESS view reconstructed from cold-index evidence. Route changes may alter HOME.";
+    return "HOME отражает состояние индексированных файлов. Не все изменения обратимы.";
   }
 
   private escape(value: string): string {

@@ -1,0 +1,585 @@
+/* V.E.R.A. панель */
+.vera-overlay {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid var(--text);
+    padding: 15px;
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    transform-origin: bottom right;
+}
+
+.vera-overlay.visible {
+    opacity: 1;
+}
+
+.vera-overlay.nervous {
+    animation: nervous-shake 2s infinite;
+    border-color: var(--warn);
+    color: var(--warn);
+    border-style: double;
+    border-width: 4px;
+}
+
+.vera-overlay.angry {
+    border-color: var(--error);
+    color: var(--error);
+    background: #1a0000;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px var(--error);
+    animation: violent-shake 0.2s infinite;
+}
+
+.vera-overlay.happy {
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent);
+    animation: happy-bounce 0.5s ease-in-out;
+}
+
+.vera-overlay.evil {
+    border-color: #f0f;
+    color: #f0f;
+    box-shadow: 0 0 20px #f0f, inset 0 0 20px #f0f;
+    animation: breathe 0.5s infinite alternate;
+}
+
+.vera-overlay.vera-goodbye {
+    animation: digital-goodbye 4s forwards cubic-bezier(0.22, 1, 0.36, 1) !important;
+    pointer-events: none;
+    border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.vera-face {
+    font-size: 24px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    text-align: center;
+    transition: all 0.2s;
+    font-family: monospace;
+}
+
+.vera-text-container {
+    overflow: hidden;
+    transition: max-height 0.5s ease, opacity 0.5s ease, margin-top 0.5s ease;
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    border-top: 1px dashed transparent;
+}
+
+.vera-text-container.visible {
+    max-height: 200px;
+    opacity: 1;
+    margin-top: 10px;
+    border-top: 1px dashed currentColor;
+    padding-top: 5px;
+}
+
+.vera-text {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    min-height: 20px;
+}
+
+.glitch-text-fx {
+    animation: text-flicker 0.05s infinite;
+    color: var(--bg);
+    background: var(--error);
+    padding: 0 2px;
+}
+
+/* BOSS FIGHT */
+.vera-overlay.undertale-mode {
+    position: fixed;
+    top: 50% !important;
+    left: 50% !important;
+    bottom: auto !important;
+    right: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: 95vw !important;
+    height: 60vh !important;
+    max-width: 800px;
+    max-height: 600px;
+    background: #000;
+    border: 5px solid var(--text);
+    z-index: 999999;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    transition: border-color 0.2s;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+#boss-canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: none;
+    cursor: none;
+    background: radial-gradient(circle at center, #111, #000);
+    overflow: hidden;
+}
+
+canvas#boss-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.boss-entry-anim {
+    animation: expand-monitor 1s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+#boss-hud {
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 0 0 5px #fff;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+    padding-top: 15px;
+}
+
+.boss-stat-box {
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid white;
+    padding: 5px 15px;
+    border-radius: 5px;
+    color: white;
+    box-shadow: 0 0 10px white;
+}
+
+.boss-stat-val {
+    color: #f0f;
+    text-shadow: 0 0 10px #f0f;
+}
+
+#cleanup-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border: 4px solid #fff;
+    padding: 20px;
+    z-index: 10000000;
+    display: none;
+    text-align: center;
+    box-shadow: 0 0 50px #fff;
+    animation: fadeIn 0.5s forwards;
+    width: 80%;
+    max-width: 400px;
+}
+
+.cleanup-btn {
+    background: #000;
+    border: 2px solid #0f0;
+    color: #0f0;
+    padding: 10px 30px;
+    font-size: 24px;
+    font-family: 'Courier New';
+    margin-top: 20px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.cleanup-btn:hover {
+    background: #0f0;
+    color: #000;
+}
+
+/* BUG ENTITY */
+#bug-entity {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: #000;
+    border: 1px solid #0f0;
+    z-index: 20000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+    cursor: pointer;
+    animation: bug-float 3s infinite ease-in-out;
+    box-shadow: 0 0 10px #0f0;
+    transition: left 0.5s ease-out, top 0.5s ease-out;
+}
+
+.bug-cage {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg, transparent, transparent 15px, var(--text) 15px, var(--text) 18px);
+    pointer-events: none;
+    border: 2px solid var(--text);
+    box-shadow: inset 0 0 5px var(--text);
+    transition: opacity 0.5s;
+}
+
+.bug-cage-h {
+    background: repeating-linear-gradient(0deg, transparent, transparent 15px, var(--text) 15px, var(--text) 18px);
+}
+
+.infection-projectile {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #f00;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #f00, 0 0 40px #f00;
+    z-index: 99999;
+    pointer-events: none;
+    transition: all 1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+#hacked-overlay {
+    position: fixed;
+    top: 30%;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 8vw;
+    font-weight: 900;
+    color: #f00;
+    font-family: 'Impact';
+    text-transform: uppercase;
+    letter-spacing: 10px;
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100000;
+    text-shadow: 0 0 20px #000, 5px 5px 0 #000;
+}
+
+/* Приложения */
+.terminal-corrupted {
+    background: #0a0000 !important;
+    border-color: #f00 !important;
+    color: #f55 !important;
+    box-shadow: 0 0 15px #f00, inset 0 0 20px rgba(50, 0, 0, 0.5) !important;
+    animation: pulse-slow 2s infinite;
+}
+
+.terminal-corrupted .win-header {
+    background: #800 !important;
+    color: #000 !important;
+    border-bottom-color: #f00 !important;
+}
+
+.terminal-corrupted .terminal-input {
+    color: #f55 !important;
+    text-shadow: 0 0 5px #f00;
+}
+
+.terminal-line {
+    margin-bottom: 5px;
+    word-break: break-all;
+}
+
+.terminal-input-line {
+    display: flex;
+    gap: 5px;
+}
+
+.terminal-input {
+    background: transparent;
+    border: none;
+    color: inherit;
+    width: 100%;
+    outline: none;
+    font-family: inherit;
+    font-weight: bold;
+}
+
+.shop-item {
+    border: 1px solid var(--dim);
+    margin-bottom: 10px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.shop-item:hover {
+    background: rgba(0, 255, 0, 0.1);
+}
+
+.shop-item.bought {
+    opacity: 0.5;
+    text-decoration: line-through;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+.folder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 15px;
+}
+
+.file-item {
+    text-align: center;
+    cursor: pointer;
+    padding: 10px;
+    border: 1px solid transparent;
+    transition: background 0.1s;
+}
+
+.file-item:hover {
+    background: var(--text);
+    color: #000;
+    border-color: var(--text);
+    box-shadow: 4px 4px 0 var(--dim);
+}
+
+.file-icon {
+    font-size: 30px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.folder-locked {
+    opacity: 0.7;
+    position: relative;
+}
+
+.folder-locked::after {
+    content: "🔒";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 12px;
+}
+
+/* Титры & Концовка */
+.prison-ui {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+    padding: 20px;
+    z-index: 2000;
+    position: fixed;
+    inset: 0;
+    background: black;
+    transition: opacity 2s;
+}
+
+.prison-bar-container {
+    width: 80%;
+    height: 60px;
+    border: 4px solid #500;
+    padding: 5px;
+    margin: 40px 0;
+    background: #1a0000;
+    position: relative;
+}
+
+.prison-bar {
+    width: 0%;
+    height: 100%;
+    background: #ff0000;
+    transition: width 0.05s linear;
+}
+
+.prison-btn {
+    font-size: 24px;
+    padding: 20px 50px;
+    background: #550000;
+    color: red;
+    border: 2px solid red;
+    animation: pulse-btn 0.5s infinite;
+    cursor: pointer;
+    font-family: 'Impact', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.prison-ending-message {
+    margin-top: 30px;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    color: #888;
+    opacity: 0;
+    animation: fadeIn 2s forwards;
+    display: none;
+}
+
+.ending-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 40000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: #000;
+    text-align: center;
+    animation: fadeIn 2s forwards;
+    font-family: 'Verdana', sans-serif;
+}
+
+#credits-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: none;
+    opacity: 0;
+    transition: opacity 3s;
+    background: #000;
+    font-family: 'Courier New', monospace;
+    color: #0f0;
+    overflow: hidden;
+}
+
+#credits-screen.bad-ending-credits {
+    background: #020000;
+    color: #f00;
+    font-family: 'Impact', sans-serif;
+}
+
+#credits-screen.good-ending-credits {
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.credits-content {
+    position: absolute;
+    top: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-bottom: 100px;
+    animation: scrollCredits 25s linear forwards;
+}
+
+.credit-section {
+    margin-bottom: 60px;
+    width: 100%;
+    max-width: 600px;
+}
+
+.credit-role {
+    font-size: 14px;
+    color: inherit;
+    opacity: 0.7;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.credit-name {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: inherit;
+}
+
+.credit-title {
+    font-size: 40px;
+    margin-bottom: 40px;
+    border-bottom: 2px solid currentColor;
+    display: inline-block;
+    padding-bottom: 10px;
+}
+
+#end-card {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2147483647;
+    opacity: 0;
+    transition: opacity 1s ease-in;
+    pointer-events: none;
+}
+
+#end-card.visible {
+    display: flex;
+    opacity: 1;
+    pointer-events: all;
+}
+
+.end-title-text {
+    font-size: 10vw;
+    font-weight: 900;
+    margin-bottom: 0px;
+    opacity: 0;
+}
+
+.restart-btn {
+    padding: 15px 40px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    background: transparent;
+    border: 2px solid currentColor;
+    color: inherit;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.3s;
+    opacity: 0;
+    animation: fadeInBtn 1s forwards 1s;
+    margin-top: 10px;
+}
+
+.restart-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.demo-text {
+    font-size: 1.2rem;
+    opacity: 0;
+    margin-top: -10px;
+    margin-bottom: 40px;
+    margin-left: 20%;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    animation: fadeInBtn 1s forwards 3s;
+}
+
+.good-ending-credits #end-card {
+    color: #fff;
+}
+
+.good-ending-credits .end-title-text {
+    animation: goodEndingText 4s ease-out forwards 0.5s;
+    text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+}
+
+.bad-ending-credits #end-card {
+    color: #ff3333;
+    background: #080000;
+}
+
+.bad-ending-credits .end-title-text {
+    font-family: 'Impact', sans-serif;
+    text-shadow: 0 0 10px #f00, 0 0 20px #f22, 0 0 40px #900;
+    animation: badEndingFlicker 3s infinite steps(1);
+    letter-spacing: 5px;
+    opacity: 1;
+}

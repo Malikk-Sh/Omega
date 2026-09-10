@@ -12,6 +12,7 @@ import { OmegaOS } from "../omega-os/OmegaOS.js";
 import { DialogueController, type DialogueLine } from "../story/DialogueController.js";
 
 const AUTOSAVE_SLOT = "omega_autosave";
+const LEGACY_M0_SLOT = "m0_autosave";
 const SEA_MEMORY = "/memories/sea_2017.img";
 
 export class Game {
@@ -27,6 +28,7 @@ export class Game {
   private os!: OmegaOS;
   private dialogue!: DialogueController;
   private autosaveTimer: number | null = null;
+  private focusedInteractionId: string | null = null;
 
   async start(): Promise<void> {
     const canvas = document.querySelector<HTMLCanvasElement>("#m0-world");
@@ -42,10 +44,11 @@ export class Game {
       })
     ]);
 
-    const loaded = await this.saves.load(AUTOSAVE_SLOT).catch(error => {
-      console.warn("Autosave could not be loaded; starting clean.", error);
+    let loaded = await this.saves.load(AUTOSAVE_SLOT).catch(error => {
+      console.warn("Autosave could not be loaded; checking M0 state.", error);
       return null;
     });
+    if (!loaded) loaded = await this.saves.load(LEGACY_M0_SLOT).catch(() => null);
     if (loaded) this.state = loaded;
     this.upgradeStateForHome();
 
@@ -60,14 +63,22 @@ export class Game {
 
     this.os = new OmegaOS(osRoot, this.filesystem, this.events, () => void this.saveNow(), () => void this.resetHome());
     this.renderer.setInteractionCallbacks({
-      onFocus: focus => this.updateInteractionPrompt(focus),
+      onFocus: focus => {
+        this.focusedInteractionId = focus?.id ?? null;
+        this.updateInteractionPrompt(focus);
+      },
       onInteract: id => void this.handleWorldInteraction(id)
     });
 
     this.input.attach(document);
     this.input.onAction("os", () => {
       if (this.dialogue.isActive()) return;
-      this.os.toggle();
+      if (this.os.isVisible()) {
+        this.os.setVisible(false);
+        return;
+      }
+      if (this.focusedInteractionId === "computer") this.os.setVisible(true);
+      else this.flashMessage("Подойди к компьютеру, чтобы открыть OMEGA OS");
     });
     this.input.onAction("interact", () => {
       if (this.dialogue.isActive()) {
@@ -98,16 +109,13 @@ export class Game {
     this.renderer.start();
     this.updateStatus(this.filesystem.exists(SEA_MEMORY));
     window.addEventListener("pagehide", () => { this.renderer.writePlayerState(this.state); void this.saveNow(); });
-
     window.setTimeout(() => void this.playIntroIfNeeded(), 500);
   }
 
   private upgradeStateForHome(): void {
     this.state.checkpoint = "m1_home";
     this.state.world.activeScene = "apartment_home_m1";
-    if (!this.state.filesystem.entries[SEA_MEMORY]) {
-      this.state.filesystem.entries[SEA_MEMORY] = { deleted: false };
-    }
+    if (!this.state.filesystem.entries[SEA_MEMORY]) this.state.filesystem.entries[SEA_MEMORY] = { deleted: false };
     const defaults: Record<string, boolean> = {
       m1_intro_seen: false,
       m1_photo_inspected: false,
@@ -138,7 +146,6 @@ export class Game {
       this.os.setVisible(true);
       return;
     }
-
     if (id === "vera") {
       const anomalySeen = this.state.flags.m1_anomaly_seen === true;
       await this.playDialogue(anomalySeen ? [
@@ -148,7 +155,6 @@ export class Game {
       ]);
       return;
     }
-
     if (id === "mug") {
       this.state.flags.m1_mug_seen = true;
       this.scheduleAutosave();
@@ -157,7 +163,6 @@ export class Game {
       ]);
       return;
     }
-
     if (id === "photo") {
       if (!this.filesystem.exists(SEA_MEMORY)) return;
       const firstInspection = this.state.flags.m1_photo_inspected !== true;

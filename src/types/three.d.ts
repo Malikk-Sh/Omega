@@ -15,6 +15,7 @@ declare module "three" {
   export const CanvasTexture: any;
   export const Raycaster: any;
   export const SRGBColorSpace: any;
+  export const DoubleSide: any;
   export const MathUtils: any;
   export type Object3D = any;
 }

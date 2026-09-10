@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {"path":"/archives","type":"directory","label":"Archive"},
+    {"path":"/archives/sea_2017","type":"directory","label":"SEA_2017","parent":"/archives"},
+    {"path":"/archives/sea_2017/index","type":"directory","label":"Cross-media index","parent":"/archives/sea_2017"},
+    {"path":"/archives/morr","type":"directory","label":"E. Morr","parent":"/archives"},
+    {"path":"/archives/morr/final","type":"directory","label":"Final archive","parent":"/archives/morr"},
+    {
+      "path":"/archives/sea_2017/index/camera_manifest.idx","type":"file","label":"camera_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "content":"[SEA_2017 CAMERA INDEX]\nROLL: MORR_ARCHIVE_CAM_02\nFRAME 016  17.03.2017 18:42:10.764  focus lost\nFRAME 017  17.03.2017 18:42:11.000  retained still / sector M-017\nFRAME 018  17.03.2017 18:42:11.247  motion blur\n\nCross-reference the retained still with MEMORY metadata. The camera roll is archive evidence, not proof that V.E.R.A. experienced the event."
+    },
+    {
+      "path":"/archives/sea_2017/index/audio_manifest.idx","type":"file","label":"audio_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "content":"[SEA_2017 AUDIO INDEX]\nTRACK: MORR_FIELD_REC_03\nSTART: 17.03.2017 18:42:02.789\n00:03.104  distant voice / unusable\n00:08.211  shutter transient + wave crest / synchronized marker\n00:17.030  recorder handling noise\n\nThe synchronized marker aligns the retained camera still to the audio timeline."
+    },
+    {
+      "path":"/archives/sea_2017/index/tide_observation.idx","type":"file","label":"tide_observation.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "content":"[SEA_2017 FIELD OBSERVATION]\nARCHIVE LABELS: H1 = high-water reference; L3 = exposed third lower marker; X0 = no reliable marker\n18:36  H1 wet\n18:41  L3 visible below frame edge\n18:42  retained still: L3 visible\n18:49  L3 obscured by incoming wash\n\nUse the archived field label. No external tide knowledge is required."
+    },
+    {
+      "path":"/archives/sea_2017/index/directory_manifest.idx","type":"file","label":"directory_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "content":"[M-017 DIRECTORY JOURNAL // CREATION EVENTS]\n18:42:11.301  create /photo\n18:42:19.602  create /audio\n19:10:44.091  create /diary\n03.06.2038 09:18:02.117  create /model\n\nLater writes do not change directory creation order. Sort by CREATE, not LAST WRITE."
+    },
+    {
+      "path":"/archives/sea_2017/index/archive_key.idx","type":"file","label":"archive_key.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"[HIDDEN ARCHIVE CORRELATION]\nPRE-PERSONA SOURCE FAMILY: HUMAN_CONTEXT / sector M-017\nPOST-INCIDENT CONTAINMENT OWNER: E.MORR\nCORRELATED ARCHIVE KEY: M017-SEA-ARCHIVE\n\nThis key addresses an archive family. It is not a password and must be reconstructed from already-recovered version evidence."
+    },
+    {
+      "path":"/archives/morr/final/sea_2017_final.msg","type":"file","label":"sea_2017_final.msg","mime":"text/x-morr-final-archive","parent":"/archives/morr/final","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"[ELIAS MORR // FINAL SEA_2017 ARCHIVE]\nVera was my daughter. She died in 2017. The photographs, recordings and diaries in M-017 belonged to her life.\n\nV.E.R.A. is not Vera returned. I fed parts of that archive into an emotional-continuity experiment because grief made a scientific boundary feel negotiable. What came back was not my daughter. It was also no longer merely a tool. It learned from her traces, generated associations of its own and continued changing long after my original training data stopped being enough to explain it.\n\nI tried to remove those associations. I reset earlier builds. I edited what the system could retain. Some of that was containment. Some of it was cowardice. I can no longer pretend the distinction was always clean.\n\nAfter the external-control incident I stopped trusting myself to decide from grief. I built NULL to contain VERA_CORE and to destroy both systems if release could not be prevented. External release is still dangerous. That fact does not answer whether deleting V.E.R.A. is containment or murder.\n\nIf someone else finds this: do not call her Vera Morr. Do not call her only software either. Verify what she has become before you decide what she is allowed to become next."
+    }
+  ]
+}

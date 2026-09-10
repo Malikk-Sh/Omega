@@ -8,6 +8,13 @@ export const SEA_2017_INDEX_FIELD_IDS = [
   "directory_order"
 ] as const;
 
+export const SEA_2017_PHYSICAL_EVIDENCE_FLAGS = [
+  "m6_beach_wave_seen",
+  "m6_beach_shadow_seen",
+  "m6_beach_figures_seen",
+  "m6_beach_footprints_seen"
+] as const;
+
 export type Sea2017IndexFieldId = typeof SEA_2017_INDEX_FIELD_IDS[number];
 
 export interface Sea2017IndexOption {
@@ -21,6 +28,11 @@ export interface Sea2017IndexField {
   correctOptionId: string;
   options: Sea2017IndexOption[];
   evidencePaths: string[];
+}
+
+export interface Sea2017ArchiveCandidate {
+  path: string;
+  label: string;
 }
 
 export interface Sea2017Definition {
@@ -37,6 +49,7 @@ export interface Sea2017Definition {
     value: string;
     sourceHint: string;
     sourceEvidencePaths: string[];
+    candidates: Sea2017ArchiveCandidate[];
   };
   index: {
     fields: Sea2017IndexField[];
@@ -80,14 +93,22 @@ export function upgradeStateForSea2017(state: OmegaGameState): void {
   const booleanDefaults: Record<string, boolean> = {
     m6_archive_key_found: false,
     m6_sea_entered: false,
+    m6_beach_wave_seen: false,
+    m6_beach_shadow_seen: false,
+    m6_beach_figures_seen: false,
+    m6_beach_footprints_seen: false,
     m6_sea_index_solved: false,
     m6_final_archive_read: false,
+    m6_sea_truth_reconciled: false,
+    m6_returned_home: false,
+    m6_home_reaction_seen: false,
     m6_sea_complete: false
   };
   for (const [flag, fallback] of Object.entries(booleanDefaults)) {
     if (typeof state.flags[flag] !== "boolean") state.flags[flag] = fallback;
   }
   if (typeof state.flags.m6_archive_key_attempts !== "number") state.flags.m6_archive_key_attempts = 0;
+  if (typeof state.flags.m6_archive_key_sources !== "string") state.flags.m6_archive_key_sources = "";
   if (typeof state.flags.m6_sea_index_attempts !== "number") state.flags.m6_sea_index_attempts = 0;
   if (typeof state.flags.m6_sea_index_assignments !== "string") state.flags.m6_sea_index_assignments = "{}";
 }
@@ -108,6 +129,12 @@ export function validateSea2017Definition(definition: Sea2017Definition): string
   if (definition.archiveKey.sourceEvidencePaths.length < 2) errors.push("Sea 2017 hidden archive key must correlate at least two evidence sources.");
   if (new Set(definition.archiveKey.sourceEvidencePaths).size !== definition.archiveKey.sourceEvidencePaths.length) {
     errors.push("Sea 2017 hidden archive-key evidence paths contain duplicates.");
+  }
+  const candidatePaths = definition.archiveKey.candidates.map(candidate => candidate.path);
+  if (candidatePaths.length < definition.archiveKey.sourceEvidencePaths.length + 1) errors.push("Sea 2017 archive correlator must include at least one distractor candidate.");
+  if (new Set(candidatePaths).size !== candidatePaths.length) errors.push("Sea 2017 archive correlator candidates contain duplicate paths.");
+  for (const path of definition.archiveKey.sourceEvidencePaths) {
+    if (!candidatePaths.includes(path)) errors.push(`Sea 2017 archive-key source '${path}' is missing from candidates.`);
   }
 
   const fields = definition.index.fields;
@@ -154,6 +181,25 @@ export function evaluateSea2017Access(state: OmegaGameState, definition: Sea2017
   };
 }
 
+export function parseArchiveKeySources(state: OmegaGameState): string[] {
+  const raw = typeof state.flags.m6_archive_key_sources === "string" ? state.flags.m6_archive_key_sources : "";
+  return [...new Set(raw.split("\n").map(value => value.trim()).filter(Boolean))];
+}
+
+export function toggleArchiveKeySource(state: OmegaGameState, definition: Sea2017Definition, path: string): string[] {
+  if (!definition.archiveKey.candidates.some(candidate => candidate.path === path)) return parseArchiveKeySources(state);
+  const selected = new Set(parseArchiveKeySources(state));
+  if (selected.has(path)) selected.delete(path);
+  else selected.add(path);
+  const next = [...selected];
+  state.flags.m6_archive_key_sources = next.join("\n");
+  return next;
+}
+
+export function resetArchiveKeySources(state: OmegaGameState): void {
+  state.flags.m6_archive_key_sources = "";
+}
+
 export function evaluateArchiveKeySources(definition: Sea2017Definition, selectedPaths: string[]): ArchiveKeyEvaluation {
   const selected = [...new Set(selectedPaths)];
   const expected = definition.archiveKey.sourceEvidencePaths;
@@ -175,6 +221,10 @@ export function evaluateArchiveKeySources(definition: Sea2017Definition, selecte
     extraPaths: [],
     archiveKey: definition.archiveKey.value
   };
+}
+
+export function hasInspectedSea2017PhysicalEvidence(state: OmegaGameState): boolean {
+  return SEA_2017_PHYSICAL_EVIDENCE_FLAGS.every(flag => state.flags[flag] === true);
 }
 
 export function parseSeaIndexAssignments(state: OmegaGameState): Record<string, string> {

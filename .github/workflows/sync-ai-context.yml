@@ -42,6 +42,11 @@ jobs:
           AI_CONTEXT_SOURCE_SHA: ${{ github.sha }}
         run: node scripts/update-ai-context.mjs
 
+      - name: Verify generated context is deterministic
+        env:
+          AI_CONTEXT_SOURCE_SHA: ${{ github.sha }}
+        run: node scripts/update-ai-context.mjs --check
+
       - name: Commit generated context if changed
         shell: bash
         run: |

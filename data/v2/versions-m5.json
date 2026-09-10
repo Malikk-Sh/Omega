@@ -1,0 +1,52 @@
+{
+  "versions": [
+    {
+      "id": "vera_0_3",
+      "label": "V.E.R.A. 0.3",
+      "sceneId": "backup_0_3",
+      "environment": "sandbox",
+      "puzzle": "classification_token",
+      "unlockFlag": "m3_contact_choice_made",
+      "completionFlag": "m4_home_reaction_seen"
+    },
+    {
+      "id": "vera_1_0",
+      "label": "V.E.R.A. 1.0",
+      "sceneId": "backup_1_0",
+      "environment": "summer_house",
+      "puzzle": "synthetic_photograph",
+      "unlockFlag": "m4_home_reaction_seen",
+      "completionFlag": "m5_v10_complete"
+    },
+    {
+      "id": "vera_2_6",
+      "label": "V.E.R.A. 2.6",
+      "sceneId": "backup_2_6",
+      "environment": "research_office",
+      "puzzle": "rollback_audit",
+      "unlockFlag": "m5_v10_complete",
+      "completionFlag": "m5_v26_complete"
+    },
+    {
+      "id": "vera_4_1",
+      "label": "V.E.R.A. 4.1",
+      "sceneId": "backup_4_1",
+      "environment": "containment_night",
+      "puzzle": "incident_reconstruction",
+      "unlockFlag": "m5_v26_complete",
+      "completionFlag": "m5_v41_complete"
+    }
+  ],
+  "syntheticPhotograph": {
+    "id": "v10_summer_house_photo_01",
+    "sourceRecord": {
+      "captureId": "SH-1024-A",
+      "captured": "14.07.2038 16:08:22",
+      "camera": "MORR_ARCHIVE_CAM_02",
+      "verifiedElements": ["window_rain", "wall_clock", "tea_cup"]
+    },
+    "renderedElements": ["window_rain", "wall_clock", "tea_cup", "red_ribbon", "sea_shell"],
+    "generatedElements": ["red_ribbon", "sea_shell"],
+    "rewardClue": "v10_reconstruction_layer_detected"
+  }
+}

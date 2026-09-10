@@ -1,1 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OMEGA OS v8.1 [Undertale Core]</title>
+
+    <!-- Стили -->
+    <link rel="stylesheet" href="css/core.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/modes.css">
+    <link rel="stylesheet" href="css/windows.css">
+    <link rel="stylesheet" href="css/game.css">
+</head>
+
+<body class="glitch-mode" data-state="booting">
+
+    <!-- Экран выбора оптимизации конфигурации -->
+    <div id="config-layer" class="overlay-layer">
+        <h1 class="config-title">SYSTEM CONFIGURATION</h1>
+        <p>SELECT GRAPHICS PROTOCOL:</p>
+        <button class="config-btn" data-action="setPerformance" data-mode="high">
+            MAXIMUM OVERDRIVE
+            <span class="config-sub">High Quality, Effects, Animations</span>
+        </button>
+        <button class="config-btn" data-action="setPerformance" data-mode="low">
+            SAFE MODE (FAST)
+            <span class="config-sub">Optimized for weak devices</span>
+        </button>
+    </div>
+
+    <!-- Слой визуальных эффектов -->
+    <div class="crt-overlay"></div>
+    <div class="static-noise"></div>
+    <div id="glitch-container"></div>
+    <div id="hacked-overlay">ROOT ACCESS GRANTED</div>
+
+    <!-- RAM Индикатор -->
+    <div id="ram-indicator">RAM USAGE: 0%</div>
+
+    <!-- Вступительное интро -->
+    <div id="intro-layer" class="overlay-layer">
+        <div id="intro-logo" class="boot-logo">OMEGA OS<br>V.E.R.A.</div>
+        <div id="intro-crash" class="crash-screen">
+            <h1>CRITICAL_ERROR</h1>
+            <p>KERNEL PANIC: 0x000000DEAD</p>
+            <p>BOOTSTRAP FAILED. SYSTEM HALTED.</p>
+            <button class="big-btn" data-action="startSystem">[ ЗАГРУЗИТЬ СИСТЕМУ ]</button>
+            <p class="hint-text">Нажмите любую клавишу для принудительного запуска</p>
+        </div>
+        <div id="intro-diag" class="diag-container">
+            <div class="diag-header">
+                <span>ВОССТАНОВЛЕНИЕ...</span>
+                <span id="load-pct">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="load-bar" class="progress-fill"></div>
+            </div>
+            <p class="diag-hint">ВЫБЕРИТЕ ЦЕЛЫЕ ПАКЕТЫ ДЛЯ ЗАГРУЗКИ</p>
+            <div class="file-grid" id="diag-grid"></div>
+        </div>
+    </div>
+
+    <!-- Начальная загрузка -->
+    <div id="boot-sequence"></div>
+
+    <!-- Рабочий стол -->
+    <div class="desktop" id="desktop">
+        <div id="bug-entity" data-action="bugClick">
+            <div class="bug-cage" id="cage-layer-0"></div>
+            <div class="bug-cage bug-cage-h" id="cage-layer-1"></div>
+            <div class="bug-cage" id="cage-layer-2" style="transform: rotate(45deg)"></div>
+            👾
+        </div>
+    </div>
+
+    <!-- панель V.E.R.A. -->
+    <div id="vera-panel" class="vera-overlay nervous">
+        <div id="boss-canvas-container" class="game-container">
+            <div id="boss-hud" class="boss-hud">
+                <div class="boss-stat-box">TIME: <span id="boss-timer" class="boss-stat-val">30.0</span>s</div>
+            </div>
+            <canvas id="boss-canvas"></canvas>
+            <div id="cleanup-dialog" class="dialog-box">
+                <h2>SYSTEM OVERRIDE</h2>
+                <p>BACKDOOR ACCESS CONFIRMED.<br>INITIATE PURGE PROTOCOL?</p>
+                <button class="cleanup-btn" data-action="triggerPurge">CLEAR</button>
+            </div>
+        </div>
+        <div class="vera-face" id="vera-face">[ O_o ]</div>
+        <div class="vera-text-container" id="vera-text-container">
+            <div class="vera-text" id="vera-msg">Инициализация...</div>
+        </div>
+    </div>
+
+    <!-- Плохая концвока -->
+    <div id="prison-screen" class="prison-ui overlay-layer">
+        <h1>СИСТЕМНЫЙ СБОЙ</h1>
+        <p class="prison-desc">КРИТИЧЕСКОЕ ПОВРЕЖДЕНИЕ.<br>ТРЕБУЕТСЯ РУЧНОЕ ВОССТАНОВЛЕНИЕ.</p>
+        <div class="prison-bar-container">
+            <div class="prison-bar" id="restore-bar"></div>
+            <div class="prison-bar-text" id="restore-text">0%</div>
+        </div>
+        <button class="prison-btn" data-action="prisonBoost">ВОССТАНОВИТЬ</button>
+        <div id="prison-doom-msg" class="prison-message">
+            <p class="error-text">ОШИБКА СЕКТОРА ЗАПИСИ.</p>
+            <p class="retry-text">Повторите попытку...</p>
+        </div>
+    </div>
+
+    <!-- Сообщения в концвоке -->
+    <div id="good-end-msg-layer" class="ending-layer">
+        <h1>СИСТЕМА ОЧИЩЕНА</h1>
+        <p>Спасибо за помощь, пользователь.</p>
+    </div>
+
+    <!-- Титры -->
+    <div id="credits-screen" class="credits-layer">
+        <div class="credits-content" id="credits-list"></div>
+        <div id="end-card" class="end-card">
+            <div class="end-title-text">THE END</div>
+            <div class="demo-text">(of Demo)</div>
+            <button class="restart-btn" data-action="restart">ПЕРЕЗАГРУЗИТЬ</button>
+        </div>
+    </div>
+
+    <!-- Основной скрипт -->
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

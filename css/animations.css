@@ -1,0 +1,416 @@
+@keyframes rgb-split-subtle {
+    0% {
+        text-shadow: 1px 0 var(--error), -1px 0 blue;
+    }
+
+    20% {
+        text-shadow: -2px 0 var(--glitch-1), 2px 0 var(--glitch-2);
+    }
+
+    30% {
+        text-shadow: 1px 0 var(--error), -1px 0 blue;
+    }
+}
+@keyframes window-buggy-close {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: none;
+    }
+
+    20% {
+        transform: scale(1.1);
+        filter: invert(1);
+        opacity: 0.9;
+    }
+
+    40% {
+        transform: scale(0.9);
+        filter: hue-rotate(90deg);
+        opacity: 0.8;
+    }
+
+    60% {
+        transform: translateX(20px) scale(1);
+        opacity: 0.5;
+        border-color: red;
+    }
+
+    80% {
+        transform: scaleY(0.1) scaleX(1.3);
+        filter: blur(5px);
+    }
+
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+@keyframes nervous-shake {
+    0% {
+        transform: translate(0,0);
+    }
+
+    50% {
+        transform: translate(1px, 1px);
+    }
+
+    100% {
+        transform: translate(0,0);
+    }
+}
+@keyframes violent-shake {
+    0% {
+        transform: scale(1.1) translate(0,0);
+    }
+
+    25% {
+        transform: scale(1.1) translate(-2px, 2px);
+    }
+
+    50% {
+        transform: scale(1.1) translate(2px, -2px);
+    }
+
+    75% {
+        transform: scale(1.1) translate(-2px, -2px);
+    }
+
+    100% {
+        transform: scale(1.1) translate(0,0);
+    }
+}
+@keyframes happy-bounce {
+    0% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+@keyframes breathe {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+
+    100% {
+        filter: hue-rotate(30deg);
+    }
+}
+@keyframes boot-flicker {
+    0% {
+        opacity: 1;
+        transform: skew(0deg);
+    }
+
+    20% {
+        opacity: 0.8;
+        transform: skew(2deg);
+    }
+
+    40% {
+        opacity: 1;
+        transform: skew(-2deg);
+    }
+
+    50% {
+        opacity: 0.2;
+        transform: scaleY(0.5);
+    }
+
+    100% {
+        opacity: 1;
+        transform: skew(0deg);
+    }
+}
+@keyframes pulse-slow {
+    0% {
+        opacity: 0.8;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.8;
+    }
+}
+@keyframes scanline-jitter {
+    0% {
+        background-position: 0 0;
+    }
+
+    10% {
+        background-position: 0 2px;
+    }
+
+    11% {
+        background-position: 0 10px;
+    }
+
+    12% {
+        background-position: 0 2px;
+    }
+
+    100% {
+        background-position: 0 0;
+    }
+}
+@keyframes noise-shift {
+    0% {
+        transform: translate(0,0);
+    }
+
+    25% {
+        transform: translate(-10px, 10px);
+    }
+
+    50% {
+        transform: translate(10px, -5px) scaleX(-1);
+    }
+
+    75% {
+        transform: translate(-5px, -5px);
+    }
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+@keyframes digital-goodbye {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px var(--accent)) hue-rotate(0deg);
+        clip-path: inset(0 0 0 0);
+    }
+
+    20% {
+        opacity: 0.9;
+        transform: scale(1.02) skew(2deg);
+        filter: drop-shadow(0 0 20px var(--accent)) hue-rotate(90deg) contrast(1.5);
+        clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+    }
+
+    40% {
+        opacity: 0.8;
+        transform: scale(0.95) skew(-5deg) translate(5px, -5px);
+        filter: blur(2px) contrast(2) invert(0.2);
+        clip-path: polygon(10% 10%, 90% 0, 100% 80%, 5% 90%);
+    }
+
+    60% {
+        opacity: 0.5;
+        transform: scale(1.1) rotate(5deg);
+        filter: blur(8px) grayscale(1) brightness(2);
+        clip-path: polygon(20% 0, 80% 20%, 100% 100%, 0 80%);
+    }
+
+    80% {
+        opacity: 0.2;
+        transform: scale(1.5) rotate(-5deg);
+        filter: blur(20px) brightness(5);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(2);
+        filter: blur(50px) brightness(10);
+    }
+}
+@keyframes violent-tremble {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(-3px, 3px);
+    }
+
+    50% {
+        transform: translate(3px, -3px);
+    }
+
+    75% {
+        transform: translate(-3px, -3px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+@keyframes bug-float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+@keyframes hacked-pop {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    70% {
+        transform: scale(0.9);
+        opacity: 1;
+    }
+    80% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+        filter: blur(20px);
+    }
+}
+@keyframes expand-monitor {
+    0% {
+        transform: scale(0.1) rotate(10deg);
+        opacity: 0;
+        filter: blur(10px) brightness(5);
+    }
+    60% {
+        transform: scale(1.05) rotate(-2deg);
+        opacity: 1;
+        filter: blur(0px);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+@keyframes goodEndingText {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+        letter-spacing: 0px;
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        letter-spacing: 20px;
+    }
+}
+@keyframes badEndingFlicker {
+    0%, 100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    5% {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    6% {
+        opacity: 1;
+        transform: translateX(10px);
+    }
+
+    10% {
+        opacity: 0;
+    }
+
+    12% {
+        opacity: 1;
+        transform: skew(20deg);
+    }
+
+    25% {
+        opacity: 1;
+        filter: invert(1);
+    }
+
+    26% {
+        opacity: 0;
+        filter: invert(0);
+    }
+
+    55% {
+        opacity: 0;
+    }
+
+    56% {
+        opacity: 1;
+        transform: scaleY(0.5);
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    85% {
+        opacity: 1;
+        transform: translateX(-5px);
+    }
+
+    86% {
+        opacity: 0;
+    }
+
+    88% {
+        opacity: 1;
+    }
+}
+@keyframes fadeInBtn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes scrollCredits {
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(-140%);
+    }
+}
+@keyframes pulse-btn {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}

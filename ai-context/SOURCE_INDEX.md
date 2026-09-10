@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `2174355206cb54e39d9dbc566fe9d00ead63d334`.
+Generated for source commit `39c2d4e03f8a4e29ba13885325b859d118c19cb4`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 
@@ -41,6 +41,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`data/v2/filesystem-m2.json`](../data/v2/filesystem-m2.json)
 - [`data/v2/filesystem-m3.json`](../data/v2/filesystem-m3.json)
 - [`data/v2/filesystem-m4.json`](../data/v2/filesystem-m4.json)
+- [`data/v2/filesystem-m5.json`](../data/v2/filesystem-m5.json)
 - [`data/v2/versions-m5.json`](../data/v2/versions-m5.json)
 - [`data/v2/world-bindings-m0.json`](../data/v2/world-bindings-m0.json)
 - [`data/v2/world-bindings-m1.json`](../data/v2/world-bindings-m1.json)
@@ -54,6 +55,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`tests/m2/investigation.test.mjs`](../tests/m2/investigation.test.mjs)
 - [`tests/m3/threshold.test.mjs`](../tests/m3/threshold.test.mjs)
 - [`tests/m4/backup03.test.mjs`](../tests/m4/backup03.test.mjs)
+- [`tests/m5/summer-house.test.mjs`](../tests/m5/summer-house.test.mjs)
 - [`tests/m5/versions.test.mjs`](../tests/m5/versions.test.mjs)
 ## Current v2 styles / shell
 
@@ -63,6 +65,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`v2/milestone2.css`](../v2/milestone2.css)
 - [`v2/milestone3.css`](../v2/milestone3.css)
 - [`v2/milestone4.css`](../v2/milestone4.css)
+- [`v2/milestone5.css`](../v2/milestone5.css)
 ## Canonical project docs
 
 - [`docs/ASSET_PIPELINE.md`](../docs/ASSET_PIPELINE.md)

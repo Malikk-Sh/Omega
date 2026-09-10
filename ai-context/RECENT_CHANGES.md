@@ -1,25 +1,25 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Recent Changes
 
-Generated from commit history ending at source commit `2174355206cb54e39d9dbc566fe9d00ead63d334`.
+Generated from commit history ending at source commit `39c2d4e03f8a4e29ba13885325b859d118c19cb4`.
 
+- `39c2d4e` — 2026-09-10T21:37:45+03:00 — Merge M5: VERA 1.0 Summer House runtime slice
+- `80b858e` — 2026-09-10T21:36:49+03:00 — docs: document VERA 1.0 Summer House runtime slice
+- `16fd079` — 2026-09-10T21:36:10+03:00 — M5: style VERA 1.0 Summer House chrome
+- `27df0d2` — 2026-09-10T21:35:57+03:00 — M5: expose VERSIONS runtime shell
+- `96cb629` — 2026-09-10T21:35:22+03:00 — ci: add milestone build regression workflow
+- `e53e3d9` — 2026-09-10T21:35:07+03:00 — M5: run Summer House regression in build
+- `303b497` — 2026-09-10T21:34:59+03:00 — M5: add Summer House lifecycle regression
+- `c864ec8` — 2026-09-10T21:33:05+03:00 — M5: wire VERA 1.0 Summer House gameplay loop
+- `6801149` — 2026-09-10T21:30:08+03:00 — M5: preserve future version scenes through M4 state upgrade
+- `765052b` — 2026-09-10T21:29:35+03:00 — M5: add VERA 1.0 snapshot explorer workspace
+- `af7bd85` — 2026-09-10T21:28:29+03:00 — M5: add VERA 1.0 runtime state contract
+- `7afe1de` — 2026-09-10T21:28:12+03:00 — M5: add VERA 1.0 source and audit filesystem records
+- `1dcbec9` — 2026-09-10T21:27:36+03:00 — M5: add VERA 1.0 Summer House renderer scene
+- `51106eb` — 2026-09-10T21:25:58+03:00 — M5: extend transactional scene routing to VERA 1.0
+- `03b895a` — 2026-09-10T18:23:40Z — chore(ai-context): auto-sync [skip ci]
 - `2174355` — 2026-09-10T21:23:27+03:00 — Merge M5: VERSIONS foundation and Synthetic Photograph contract
 - `5094f4c` — 2026-09-10T18:23:23Z — chore(ai-context): auto-sync [skip ci]
 - `ebbbafc` — 2026-09-10T21:23:07+03:00 — Merge M4: BACKUP 0.3 multi-scene milestone
 - `ca0cd7e` — 2026-09-10T21:18:07+03:00 — M5: document generic version route contract
 - `99a17f6` — 2026-09-10T21:17:09+03:00 — M5: cover generic version route contract
-- `6eaddd1` — 2026-09-10T21:16:46+03:00 — M5: add generic version route contract
-- `4ff3862` — 2026-09-10T21:15:11+03:00 — M5: document versions foundation and next slice
-- `5af6723` — 2026-09-10T21:12:36+03:00 — M5: include versions foundation regression in build
-- `1444e50` — 2026-09-10T21:12:28+03:00 — M5: add version graph and synthetic photo regression
-- `1997b03` — 2026-09-10T21:12:08+03:00 — M5: add version catalog and synthetic photograph protocol
-- `58252a2` — 2026-09-10T21:11:44+03:00 — M5: add authored version catalog and synthetic photo evidence
-- `f102144` — 2026-09-10T21:10:55+03:00 — chore: keep M5 planning out of M4 PR
-- `2f9239d` — 2026-09-10T21:10:45+03:00 — M5: seed versions foundation plan
-- `1a5faaf` — 2026-09-10T21:10:33+03:00 — M4: document transactional scene hardening
-- `80071e2` — 2026-09-10T21:09:18+03:00 — M4: test scene transition rollback and double input
-- `d484caf` — 2026-09-10T21:08:45+03:00 — M4: make scene routing transactional
-- `bcb49d8` — 2026-09-10T20:48:50+03:00 — docs: add M4 BACKUP 0.3 implementation and acceptance
-- `d3d47f3` — 2026-09-10T20:46:40+03:00 — M4: style backup workspace and scene transitions
-- `9ed844a` — 2026-09-10T20:46:22+03:00 — M4: add backup scene shell and transition layer
-- `7ad4f9d` — 2026-09-10T20:46:06+03:00 — M4: wire BACKUP 0.3 traversal and story loop

@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `dd41946044a3eb60fbaf402f85d7af69378cfc4c`.
+Generated for source commit `9e30717b11dacb84084885e45bed89cd14adcf34`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 
@@ -55,6 +55,8 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`tests/m2/investigation.test.mjs`](../tests/m2/investigation.test.mjs)
 - [`tests/m3/threshold.test.mjs`](../tests/m3/threshold.test.mjs)
 - [`tests/m4/backup03.test.mjs`](../tests/m4/backup03.test.mjs)
+- [`tests/m5/containment-night.test.mjs`](../tests/m5/containment-night.test.mjs)
+- [`tests/m5/incident-reconstruction.test.mjs`](../tests/m5/incident-reconstruction.test.mjs)
 - [`tests/m5/research-office.test.mjs`](../tests/m5/research-office.test.mjs)
 - [`tests/m5/rollback-audit.test.mjs`](../tests/m5/rollback-audit.test.mjs)
 - [`tests/m5/summer-house.test.mjs`](../tests/m5/summer-house.test.mjs)

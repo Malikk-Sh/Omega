@@ -6,19 +6,19 @@
     {"path":"/archives/morr","type":"directory","label":"E. Morr","parent":"/archives"},
     {"path":"/archives/morr/final","type":"directory","label":"Final archive","parent":"/archives/morr"},
     {
-      "path":"/archives/sea_2017/index/camera_manifest.idx","type":"file","label":"camera_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "path":"/archives/sea_2017/index/camera_manifest.idx","type":"file","label":"camera_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
       "content":"[SEA_2017 CAMERA INDEX]\nROLL: MORR_ARCHIVE_CAM_02\nFRAME 016  17.03.2017 18:42:10.764  focus lost\nFRAME 017  17.03.2017 18:42:11.000  retained still / sector M-017\nFRAME 018  17.03.2017 18:42:11.247  motion blur\n\nCross-reference the retained still with MEMORY metadata. The camera roll is archive evidence, not proof that V.E.R.A. experienced the event."
     },
     {
-      "path":"/archives/sea_2017/index/audio_manifest.idx","type":"file","label":"audio_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "path":"/archives/sea_2017/index/audio_manifest.idx","type":"file","label":"audio_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
       "content":"[SEA_2017 AUDIO INDEX]\nTRACK: MORR_FIELD_REC_03\nSTART: 17.03.2017 18:42:02.789\n00:03.104  distant voice / unusable\n00:08.211  shutter transient + wave crest / synchronized marker\n00:17.030  recorder handling noise\n\nThe synchronized marker aligns the retained camera still to the audio timeline."
     },
     {
-      "path":"/archives/sea_2017/index/tide_observation.idx","type":"file","label":"tide_observation.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "path":"/archives/sea_2017/index/tide_observation.idx","type":"file","label":"tide_observation.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
       "content":"[SEA_2017 FIELD OBSERVATION]\nARCHIVE LABELS: H1 = high-water reference; L3 = exposed third lower marker; X0 = no reliable marker\n18:36  H1 wet\n18:41  L3 visible below frame edge\n18:42  retained still: L3 visible\n18:49  L3 obscured by incoming wash\n\nUse the archived field label. No external tide knowledge is required."
     },
     {
-      "path":"/archives/sea_2017/index/directory_manifest.idx","type":"file","label":"directory_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":false,
+      "path":"/archives/sea_2017/index/directory_manifest.idx","type":"file","label":"directory_manifest.idx","mime":"text/x-omega-index","parent":"/archives/sea_2017/index","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
       "content":"[M-017 DIRECTORY JOURNAL // CREATION EVENTS]\n18:42:11.301  create /photo\n18:42:19.602  create /audio\n19:10:44.091  create /diary\n03.06.2038 09:18:02.117  create /model\n\nLater writes do not change directory creation order. Sort by CREATE, not LAST WRITE."
     },
     {

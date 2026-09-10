@@ -2,6 +2,11 @@ import type { OmegaGameState } from "../core/GameState.js";
 
 export type VeraVersionId = "vera_0_3" | "vera_1_0" | "vera_2_6" | "vera_4_1";
 
+export const V10_SOURCE_RECORD_PATH = "/backups/vera_1_0/source/photo_SH-1024-A.record";
+export const V10_AUDIT_CLUE_PATH = "/backups/vera_1_0/audit/reconstruction_layer.log";
+export const V10_PHOTO_ELEMENT_IDS = ["window_rain", "wall_clock", "tea_cup", "red_ribbon", "sea_shell"] as const;
+export type V10PhotoElementId = typeof V10_PHOTO_ELEMENT_IDS[number];
+
 export interface VeraVersionDefinition {
   id: VeraVersionId;
   label: string;
@@ -51,6 +56,10 @@ export function upgradeStateForVersions(state: OmegaGameState): void {
     m5_v10_puzzle_solved: false,
     m5_v10_clue_read: false,
     m5_v10_choice_made: false,
+    m5_v10_told_vera_generated: false,
+    m5_v10_withheld_generated: false,
+    m5_v10_returned_home: false,
+    m5_v10_home_reaction_seen: false,
     m5_v10_complete: false,
     m5_v26_entered: false,
     m5_v26_complete: false,
@@ -61,6 +70,7 @@ export function upgradeStateForVersions(state: OmegaGameState): void {
     if (typeof state.flags[flag] !== "boolean") state.flags[flag] = fallback;
   }
   if (typeof state.flags.m5_v10_photo_attempts !== "number") state.flags.m5_v10_photo_attempts = 0;
+  if (typeof state.flags.m5_v10_selected_elements !== "string") state.flags.m5_v10_selected_elements = "";
 }
 
 export function validateVersionsDefinition(definition: VersionsDefinition): string[] {
@@ -108,6 +118,20 @@ export function isVersionUnlocked(state: OmegaGameState, definition: VersionsDef
 export function deriveGeneratedElements(evidence: SyntheticPhotographDefinition): string[] {
   const verified = new Set(evidence.sourceRecord.verifiedElements);
   return evidence.renderedElements.filter(element => !verified.has(element));
+}
+
+export function parseV10SelectedElements(state: OmegaGameState): string[] {
+  const raw = typeof state.flags.m5_v10_selected_elements === "string" ? state.flags.m5_v10_selected_elements : "";
+  return raw.split(",").map(value => value.trim()).filter(Boolean);
+}
+
+export function toggleV10SelectedElement(state: OmegaGameState, elementId: string): string[] {
+  const selected = new Set(parseV10SelectedElements(state));
+  if (selected.has(elementId)) selected.delete(elementId);
+  else selected.add(elementId);
+  const next = [...selected];
+  state.flags.m5_v10_selected_elements = next.join(",");
+  return next;
 }
 
 export function evaluateSyntheticPhotoSelection(

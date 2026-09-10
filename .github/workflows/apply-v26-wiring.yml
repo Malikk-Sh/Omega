@@ -5,7 +5,7 @@ on:
     branches:
       - milestone-5-vera-2-6-research-office
     paths:
-      - scripts/apply-v26-wiring.mjs
+      - scripts/run-v26-wiring-fix.mjs
 
 permissions:
   contents: write
@@ -18,7 +18,7 @@ jobs:
         with:
           ref: milestone-5-vera-2-6-research-office
       - name: Apply runtime wiring
-        run: node scripts/apply-v26-wiring.mjs
+        run: node scripts/run-v26-wiring-fix.mjs
       - name: Commit generated wiring
         run: |
           git config user.name "github-actions[bot]"

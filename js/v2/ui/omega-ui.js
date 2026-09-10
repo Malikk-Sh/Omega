@@ -34,14 +34,12 @@ export class OmegaUI {
     win.dataset.mobileMode = mobileMode;
     win.setAttribute('role', 'dialog');
     win.setAttribute('aria-label', title || 'OMEGA window');
-
     const header = el('header', 'omega-window__header');
     const titleEl = el('div', 'omega-window__title', { text: title || 'OMEGA' });
     const close = el('button', 'omega-icon-button', { type: 'button', 'aria-label': 'Close' });
     close.innerHTML = `<img class="omega-icon" src="${this.assetRoot}/assets/v2/ui/glyphs/close.svg" alt="">`;
     close.addEventListener('click', () => win.remove());
     header.append(titleEl, close);
-
     const body = el('div', 'omega-window__body');
     if (content instanceof Node) body.append(content);
     else body.innerHTML = content ?? '';
@@ -67,9 +65,8 @@ export class OmegaUI {
   createDialogue({ speaker = 'V.E.R.A.', text = '', portrait = null, choices = [] } = {}) {
     const box = el('section', 'omega-dialogue');
     box.setAttribute('aria-label', 'Dialogue');
-    const portraitSrc = portrait || `${this.assetRoot}/assets/v2/characters/vera/portraits/vera_neutral.webp`;
+    const portraitSrc = portrait || `${this.assetRoot}/assets/v2/characters/vera/portraits/vera_neutral.svg`;
     const img = el('img', 'omega-dialogue__portrait', { alt: '', src: portraitSrc });
-    img.addEventListener('error', () => { img.src = `${this.assetRoot}/assets/v2/characters/vera/portraits/vera_neutral.svg`; }, { once: true });
     const content = el('div');
     content.append(el('div', 'omega-dialogue__speaker', { text: speaker }), el('p', 'omega-dialogue__text', { text }));
     const choiceWrap = el('div', 'omega-dialogue__choices');
@@ -112,7 +109,6 @@ export class OmegaUI {
     const pause = el('button', 'omega-touch-button omega-touch__pause', { type: 'button', 'aria-label': 'pause' });
     pause.dataset.action = 'pause';
     pause.addEventListener('click', () => onAction?.('pause', true));
-
     let movePointer = null;
     const updateMove = e => {
       const r = move.getBoundingClientRect();
@@ -127,7 +123,6 @@ export class OmegaUI {
     move.addEventListener('pointermove', e => { if (e.pointerId === movePointer) updateMove(e); });
     const resetMove = e => { if (movePointer !== e.pointerId) return; movePointer = null; knob.style.transform = 'translate(-50%,-50%)'; onMove?.({ x: 0, y: 0 }); };
     move.addEventListener('pointerup', resetMove); move.addEventListener('pointercancel', resetMove);
-
     const lookPointers = new Map();
     look.addEventListener('pointerdown', e => { look.setPointerCapture(e.pointerId); lookPointers.set(e.pointerId, { x:e.clientX, y:e.clientY }); });
     look.addEventListener('pointermove', e => {
@@ -137,7 +132,6 @@ export class OmegaUI {
     });
     const clearLook = e => lookPointers.delete(e.pointerId);
     look.addEventListener('pointerup', clearLook); look.addEventListener('pointercancel', clearLook);
-
     root.append(move, look, actions, pause);
     this.root.append(root);
     return root;

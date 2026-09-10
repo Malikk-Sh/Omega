@@ -1,0 +1,403 @@
+/* Основние переменные и стили */
+:root {
+    /* Палетка цветов */
+    --bg: #050505;
+    --win-bg: #000;
+    --text: #0f0;
+    --accent: #0a0;
+    --dim: #040;
+    --error: #f33;
+    --warn: #fa0;
+    --success: #0f0;
+
+    /* Шрифты */
+    --font-mono: 'Courier New', monospace;
+    --font-ui: 'Verdana', sans-serif;
+    --font-impact: 'Impact', sans-serif;
+
+    /* Цвета глюков */
+    --glitch-1: #ff00ff;
+    --glitch-2: #00ffff;
+    --glitch-3: #ffff00;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    height: 100vh;
+    width: 100vw;
+    transition: background 1s, filter 0.1s;
+}
+
+/* классы утилиты */
+.overlay-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+.text-forbidden {
+    color: red;
+    text-shadow: 2px 2px 5px black;
+    font-family: var(--font-impact);
+    letter-spacing: 2px;
+    filter: blur(0.5px);
+    cursor: not-allowed;
+    display: inline-block;
+    transform: skewX(-10deg);
+}
+
+/* UI элементы */
+#config-layer {
+    display: flex;
+    z-index: 60000;
+}
+
+.config-title {
+    color: var(--text);
+    text-shadow: 0 0 10px var(--accent);
+}
+
+.config-btn {
+    background: transparent;
+    border: 2px solid var(--text);
+    color: var(--text);
+    padding: 20px;
+    margin: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    width: 300px;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.config-btn:hover {
+    background: var(--text);
+    color: #000;
+}
+
+.config-sub {
+    font-size: 12px;
+    color: #666;
+    display: block;
+    margin-top: 5px;
+    text-transform: none;
+}
+
+#ram-indicator {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    border: 1px solid var(--dim);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 5px 10px;
+    z-index: 50000;
+    font-weight: bold;
+    font-size: 14px;
+    display: none;
+}
+
+#ram-indicator.critical {
+    border-color: var(--error);
+    color: var(--error);
+    animation: pulse-slow 0.5s infinite;
+}
+
+.big-btn {
+    background: var(--text);
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-size: 20px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+    animation: pulse-slow 2s infinite;
+    border: 2px solid #000;
+}
+
+.big-btn:hover {
+    background: #fff;
+    transform: scale(1.05);
+}
+
+/* Экран интро */
+.crash-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+    padding: 20px;
+    border: 4px solid var(--error);
+    color: var(--error);
+    box-shadow: 0 0 50px var(--error);
+    background: rgba(10, 0, 0, 0.95);
+}
+
+.boot-logo {
+    font-size: 5vw;
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: 10px;
+    animation: boot-flicker 0.1s infinite;
+    display: none;
+    text-shadow: 4px 0 var(--error);
+}
+
+.hint-text {
+    font-size: 10px;
+    margin-top: 5px;
+    opacity: 0.7;
+}
+
+/* UI диагностики */
+.diag-container {
+    display: none;
+    width: 100%;
+    max-width: 500px;
+    flex-direction: column;
+    gap: 10px;
+    animation: diag-pop-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.diag-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    border: 2px solid var(--text);
+    padding: 2px;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: var(--text);
+    transition: width 0.1s steps(5);
+}
+
+.file-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.file-block {
+    transition: transform 0.1s, opacity 0.2s, background 0.2s, box-shadow 0.2s;
+    position: relative;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
+    border: 1px solid #333;
+    background: rgba(0, 20, 0, 0.3);
+    user-select: none;
+    cursor: pointer;
+    padding: 10px;
+    height: 60px;
+    animation: appear 0.3s ease-out;
+}
+@keyframes appear {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.file-block.good {
+    color: var(--success);
+    text-shadow: 0 0 2px var(--success);
+    border-color: var(--accent);
+}
+.file-block.good:active {
+    background: var(--success);
+    color: #000;
+    box-shadow: 0 0 7px var(--success), inset 0 0 2px #000;
+    transform: scale(0.95);
+}
+
+.file-block.bad {
+    color: var(--error);
+    text-shadow: 0 0 3px var(--error);
+    border-color: #440000;
+    opacity: 0.9;
+    animation: glitch-shake 0.4s infinite;
+}
+
+.file-block.locked {
+    opacity: 0;
+    transform: scale(0);
+    pointer-events: none;
+    transition: opacity 0.5s, transform 0.5s;
+}
+
+@keyframes glitch-shake {
+    0% {
+        transform: translate(0, 0);
+    }
+    25% {
+        transform: translate(-1px, 1px);
+    }
+    50% {
+        transform: translate(1px, -1px);
+    }
+    75% {
+        transform: translate(-1px, -1px);
+    }
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+.click-feedback {
+    position: fixed;
+    pointer-events: none;
+    font-weight: 800;
+    font-size: 14px;
+    animation: floatUp 0.8s forwards;
+    z-index: 1000;
+    text-shadow: 1px 1px 0 #000, 0 0 5px;
+    letter-spacing: 1px;
+}
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-40px) scale(1.5);
+        opacity: 0;
+    }
+}
+
+/*
+.file-block {
+    background: #111;
+    border: 1px solid #333;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    position: relative;
+}
+
+.file-block.good {
+    color: var(--text);
+    border-color: var(--dim);
+}
+
+.file-block.bad {
+    color: var(--error);
+    border-color: #500;
+}
+
+.file-block:hover {
+    background: var(--dim);
+    color: var(--text);
+}
+*/
+
+/* Начальная загрузка */
+#boot-sequence {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    padding: 20px;
+    font-family: var(--font-mono);
+    color: #bbb;
+    font-size: 14px;
+    display: none;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    overflow: hidden;
+    z-index: 55000;
+}
+
+.boot-line {
+    display: block;
+    width: 100%;
+    margin-bottom: 2px;
+    word-break: break-all;
+}
+
+.boot-highlight {
+    color: var(--text);
+    font-weight: bold;
+}
+
+.boot-warn {
+    color: var(--warn);
+}
+
+/* Рабочий стол */
+.desktop {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-content: flex-start;
+    z-index: 10;
+    transition: opacity 1s;
+    opacity: 0;
+}
+
+/* АДАПТИВНОСТЬ */
+@media (min-width: 1024px) {
+    body {
+        font-size: 18px;
+    }
+
+    .config-btn {
+        width: 500px;
+        font-size: 24px;
+        padding: 30px;
+    }
+
+    .desktop {
+        flex-direction: column;
+        align-content: flex-start;
+        padding: 25px;
+        gap: 25px;
+    }
+
+    #boot-sequence {
+        font-size: 18px;
+        padding: 40px;
+    }
+}

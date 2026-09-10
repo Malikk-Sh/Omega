@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `9e30717b11dacb84084885e45bed89cd14adcf34`.
+Generated for source commit `7f6fd4957eb109324f7acfc6ae744bf8924a597a`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 
@@ -28,6 +28,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`src/story/Backup03Protocol.ts`](../src/story/Backup03Protocol.ts)
 - [`src/story/DialogueController.ts`](../src/story/DialogueController.ts)
 - [`src/story/ObjectiveController.ts`](../src/story/ObjectiveController.ts)
+- [`src/story/Sea2017Protocol.ts`](../src/story/Sea2017Protocol.ts)
 - [`src/story/ThresholdProtocol.ts`](../src/story/ThresholdProtocol.ts)
 - [`src/story/VersionsProtocol.ts`](../src/story/VersionsProtocol.ts)
 - [`src/types/three.d.ts`](../src/types/three.d.ts)
@@ -42,6 +43,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`data/v2/filesystem-m3.json`](../data/v2/filesystem-m3.json)
 - [`data/v2/filesystem-m4.json`](../data/v2/filesystem-m4.json)
 - [`data/v2/filesystem-m5.json`](../data/v2/filesystem-m5.json)
+- [`data/v2/sea-2017-m6.json`](../data/v2/sea-2017-m6.json)
 - [`data/v2/versions-m5.json`](../data/v2/versions-m5.json)
 - [`data/v2/world-bindings-m0.json`](../data/v2/world-bindings-m0.json)
 - [`data/v2/world-bindings-m1.json`](../data/v2/world-bindings-m1.json)
@@ -61,6 +63,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`tests/m5/rollback-audit.test.mjs`](../tests/m5/rollback-audit.test.mjs)
 - [`tests/m5/summer-house.test.mjs`](../tests/m5/summer-house.test.mjs)
 - [`tests/m5/versions.test.mjs`](../tests/m5/versions.test.mjs)
+- [`tests/m6/sea-index.test.mjs`](../tests/m6/sea-index.test.mjs)
 ## Current v2 styles / shell
 
 - [`v2/index.html`](../v2/index.html)
@@ -79,6 +82,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`docs/MILESTONE_3.md`](../docs/MILESTONE_3.md)
 - [`docs/MILESTONE_4.md`](../docs/MILESTONE_4.md)
 - [`docs/MILESTONE_5.md`](../docs/MILESTONE_5.md)
+- [`docs/MILESTONE_6.md`](../docs/MILESTONE_6.md)
 - [`docs/OMEGA_IMPLEMENTATION_CONTRACT.md`](../docs/OMEGA_IMPLEMENTATION_CONTRACT.md)
 - [`docs/UI_ASSET_BACKLOG.md`](../docs/UI_ASSET_BACKLOG.md)
 - [`docs/UI_KIT.md`](../docs/UI_KIT.md)

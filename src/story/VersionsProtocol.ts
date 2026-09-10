@@ -23,6 +23,25 @@ export const V26_REQUIRED_LOG_FLAGS = [
   "m5_v26_room_log_read"
 ] as const;
 
+export const V41_EVIDENCE_ROOT = "/backups/vera_4_1/evidence";
+export const V41_RESULT_PATH = "/backups/vera_4_1/result/incident_reconstruction.result";
+export const V41_PHYSICAL_EVIDENCE_FLAGS = [
+  "m5_v41_evidence_bus_seen",
+  "m5_v41_evidence_memory_seen",
+  "m5_v41_evidence_containment_seen"
+] as const;
+export const V41_REQUIRED_LOG_FLAGS = [
+  "m5_v41_bus_log_read",
+  "m5_v41_acl_log_read",
+  "m5_v41_departure_memory_read",
+  "m5_v41_shutdown_memory_read",
+  "m5_v41_morr_incident_read",
+  "m5_v41_morr_null_read"
+] as const;
+
+export type IncidentSource = "direct_telemetry" | "vera_reconstruction" | "morr_note";
+export const INCIDENT_SOURCES: IncidentSource[] = ["direct_telemetry", "vera_reconstruction", "morr_note"];
+
 export interface VeraVersionDefinition {
   id: VeraVersionId;
   label: string;
@@ -67,10 +86,24 @@ export interface RollbackAuditDefinition {
   rewardClue: string;
 }
 
+export interface IncidentEvidenceDefinition {
+  id: string;
+  label: string;
+  path: string;
+  source: IncidentSource;
+}
+
+export interface IncidentReconstructionDefinition {
+  id: string;
+  evidence: IncidentEvidenceDefinition[];
+  rewardClue: string;
+}
+
 export interface VersionsDefinition {
   versions: VeraVersionDefinition[];
   syntheticPhotograph: SyntheticPhotographDefinition;
   rollbackAudit: RollbackAuditDefinition;
+  incidentReconstruction: IncidentReconstructionDefinition;
 }
 
 export interface SyntheticPhotoEvaluation {
@@ -93,6 +126,14 @@ export interface RollbackOrderEvaluation {
 export interface TamperedRecordEvaluation {
   ok: boolean;
   message: string;
+  rewardClue?: string;
+}
+
+export interface IncidentClassificationEvaluation {
+  ok: boolean;
+  message: string;
+  missing: string[];
+  mismatched: string[];
   rewardClue?: string;
 }
 
@@ -132,6 +173,23 @@ export function upgradeStateForVersions(state: OmegaGameState): void {
     m5_v26_home_reaction_seen: false,
     m5_v26_complete: false,
     m5_v41_entered: false,
+    m5_v41_vera_met: false,
+    m5_v41_evidence_bus_seen: false,
+    m5_v41_evidence_memory_seen: false,
+    m5_v41_evidence_containment_seen: false,
+    m5_v41_bus_log_read: false,
+    m5_v41_acl_log_read: false,
+    m5_v41_departure_memory_read: false,
+    m5_v41_shutdown_memory_read: false,
+    m5_v41_morr_incident_read: false,
+    m5_v41_morr_null_read: false,
+    m5_v41_puzzle_solved: false,
+    m5_v41_clue_read: false,
+    m5_v41_choice_made: false,
+    m5_v41_told_vera_null: false,
+    m5_v41_withheld_null: false,
+    m5_v41_returned_home: false,
+    m5_v41_home_reaction_seen: false,
     m5_v41_complete: false
   };
   for (const [flag, fallback] of Object.entries(booleanDefaults)) {
@@ -141,6 +199,8 @@ export function upgradeStateForVersions(state: OmegaGameState): void {
   if (typeof state.flags.m5_v10_selected_elements !== "string") state.flags.m5_v10_selected_elements = "";
   if (typeof state.flags.m5_v26_audit_attempts !== "number") state.flags.m5_v26_audit_attempts = 0;
   if (typeof state.flags.m5_v26_command_order !== "string") state.flags.m5_v26_command_order = "";
+  if (typeof state.flags.m5_v41_attempts !== "number") state.flags.m5_v41_attempts = 0;
+  if (typeof state.flags.m5_v41_assignments !== "string") state.flags.m5_v41_assignments = "";
 }
 
 export function validateVersionsDefinition(definition: VersionsDefinition): string[] {
@@ -181,6 +241,21 @@ export function validateVersionsDefinition(definition: VersionsDefinition): stri
   const editedRecords = rollback?.records.filter(record => record.editedAfterRollback).map(record => record.id) ?? [];
   if (editedRecords.length !== 1 || editedRecords[0] !== rollback?.tamperedRecordId) {
     errors.push("Rollback audit must identify exactly one record edited after rollback, matching tamperedRecordId.");
+  }
+
+  const incident = definition.incidentReconstruction;
+  if (!incident?.id) errors.push("Incident reconstruction is missing id.");
+  const incidentIds = incident?.evidence.map(item => item.id) ?? [];
+  const incidentPaths = incident?.evidence.map(item => item.path) ?? [];
+  if (new Set(incidentIds).size !== incidentIds.length) errors.push("Incident reconstruction evidence IDs contain duplicates.");
+  if (new Set(incidentPaths).size !== incidentPaths.length) errors.push("Incident reconstruction evidence paths contain duplicates.");
+  if ((incident?.evidence.length ?? 0) < 3) errors.push("Incident reconstruction requires at least three evidence items.");
+  for (const item of incident?.evidence ?? []) {
+    if (!INCIDENT_SOURCES.includes(item.source)) errors.push(`Incident evidence '${item.id}' has invalid source '${item.source}'.`);
+    if (!item.path.startsWith(`${V41_EVIDENCE_ROOT}/`)) errors.push(`Incident evidence '${item.id}' must live under VERA_4_1 evidence root.`);
+  }
+  for (const source of INCIDENT_SOURCES) {
+    if (!(incident?.evidence ?? []).some(item => item.source === source)) errors.push(`Incident reconstruction requires source category '${source}'.`);
   }
   return errors;
 }
@@ -321,6 +396,70 @@ export function evaluateTamperedRecord(definition: RollbackAuditDefinition, reco
   return {
     ok: true,
     message: "AUDIT ACCEPTED // operator summary was edited after rollback execution",
+    rewardClue: definition.rewardClue
+  };
+}
+
+export function hasCompletedV41PhysicalEvidence(state: OmegaGameState): boolean {
+  return V41_PHYSICAL_EVIDENCE_FLAGS.every(flag => state.flags[flag] === true);
+}
+
+export function hasReadV41Evidence(state: OmegaGameState): boolean {
+  return V41_REQUIRED_LOG_FLAGS.every(flag => state.flags[flag] === true);
+}
+
+export function parseV41Assignments(state: OmegaGameState): Record<string, IncidentSource> {
+  const raw = typeof state.flags.m5_v41_assignments === "string" ? state.flags.m5_v41_assignments : "";
+  const assignments: Record<string, IncidentSource> = {};
+  for (const pair of raw.split(";")) {
+    const [id, source] = pair.split("=").map(value => value.trim());
+    if (id && INCIDENT_SOURCES.includes(source as IncidentSource)) assignments[id] = source as IncidentSource;
+  }
+  return assignments;
+}
+
+export function setV41EvidenceSource(
+  state: OmegaGameState,
+  evidenceId: string,
+  source: string,
+  definition: IncidentReconstructionDefinition
+): Record<string, IncidentSource> {
+  const assignments = parseV41Assignments(state);
+  if (!definition.evidence.some(item => item.id === evidenceId) || !INCIDENT_SOURCES.includes(source as IncidentSource)) return assignments;
+  assignments[evidenceId] = source as IncidentSource;
+  state.flags.m5_v41_assignments = definition.evidence
+    .filter(item => assignments[item.id])
+    .map(item => `${item.id}=${assignments[item.id]}`)
+    .join(";");
+  return assignments;
+}
+
+export function resetV41Assignments(state: OmegaGameState): void {
+  state.flags.m5_v41_assignments = "";
+}
+
+export function evaluateIncidentReconstruction(
+  definition: IncidentReconstructionDefinition,
+  assignments: Record<string, IncidentSource>
+): IncidentClassificationEvaluation {
+  const validIds = new Set(definition.evidence.map(item => item.id));
+  const unknown = Object.keys(assignments).filter(id => !validIds.has(id));
+  if (unknown.length > 0) {
+    return { ok: false, message: `SOURCE AUDIT REJECTED // unknown evidence: ${unknown.join(", ")}`, missing: [], mismatched: unknown };
+  }
+  const missing = definition.evidence.filter(item => !assignments[item.id]).map(item => item.id);
+  if (missing.length > 0) {
+    return { ok: false, message: `SOURCE AUDIT INCOMPLETE // ${definition.evidence.length - missing.length}/${definition.evidence.length} classified`, missing, mismatched: [] };
+  }
+  const mismatched = definition.evidence.filter(item => assignments[item.id] !== item.source).map(item => item.id);
+  if (mismatched.length > 0) {
+    return { ok: false, message: `SOURCE AUDIT REJECTED // ${mismatched.length} reliability assignments contradict source metadata`, missing: [], mismatched };
+  }
+  return {
+    ok: true,
+    message: "SOURCE AUDIT ACCEPTED // incident witness layers separated by provenance",
+    missing: [],
+    mismatched: [],
     rewardClue: definition.rewardClue
   };
 }

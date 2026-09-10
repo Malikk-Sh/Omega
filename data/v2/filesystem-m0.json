@@ -1,0 +1,15 @@
+{
+  "entries": [
+    { "path": "/memories", "type": "directory", "label": "memories", "parent": "/" },
+    {
+      "path": "/memories/test_photo.img",
+      "type": "file",
+      "label": "test_photo.img",
+      "parent": "/memories",
+      "mime": "image/x-omega-memory",
+      "content": "M0 world-binding test artifact",
+      "deletable": true,
+      "restorable": true
+    }
+  ]
+}

@@ -308,13 +308,13 @@ main
 
 # OMEGA — Current Project Snapshot
 
-> Source commit: `9fc7f5907641a35353be373ffb27bfe39c36a32d`  
-> Source commit date: `2026-09-10T20:22:37+03:00`  
+> Source commit: `ebbbafc1326068456e5a56338ed7fd600c0441f7`  
+> Source commit date: `2026-09-10T21:23:07+03:00`  
 > Branch when generated: `main`  
-> Package version: `0.5.0-m3`  
-> Latest milestone doc: `docs/MILESTONE_3.md`  
-> Latest milestone: **OMEGA — Milestone 3: THRESHOLD**  
-> Status: implementation candidate; M1/M2/M3 automated regressions pass on Vercel preview. Requires project-owner mobile acceptance.
+> Package version: `0.6.0-m4`  
+> Latest milestone doc: `docs/MILESTONE_4.md`  
+> Latest milestone: **OMEGA — Milestone 4: BACKUP 0.3**  
+> Status: implementation candidate; M1/M2/M3/M4 automated regressions pass on Vercel preview. Requires project-owner mobile acceptance.
 
 ## Production
 
@@ -330,12 +330,13 @@ main
 
 ## npm scripts
 
-- `npm run build` → `tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs`
+- `npm run build` → `tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs`
 - `npm run test:m0` → `node tests/m0/core.test.mjs`
 - `npm run test:m1` → `node tests/m1/home.test.mjs`
 - `npm run test:m2` → `node tests/m2/investigation.test.mjs`
 - `npm run test:m3` → `node tests/m3/threshold.test.mjs`
-- `npm run check:m3` → `npm run build`
+- `npm run test:m4` → `node tests/m4/backup03.test.mjs`
+- `npm run check:m4` → `npm run build`
 - `npm run ai:sync` → `node scripts/update-ai-context.mjs`
 - `npm run ai:check` → `node scripts/update-ai-context.mjs --check`
 
@@ -356,7 +357,7 @@ The authoritative build command is the current `package.json` script. Do not ass
 Current build:
 
 ```text
-tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs
+tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs
 ```
 
 ## Freshness rule
@@ -367,118 +368,177 @@ tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigati
 
 # LATEST MILESTONE DOCUMENT
 
-<!-- Source: docs/MILESTONE_3.md -->
-# OMEGA — Milestone 3: THRESHOLD
+<!-- Source: docs/MILESTONE_4.md -->
+# OMEGA — Milestone 4: BACKUP 0.3
 
-Status: implementation candidate; M1/M2/M3 automated regressions pass on Vercel preview. Requires project-owner mobile acceptance.
+Status: implementation candidate; M1/M2/M3/M4 automated regressions pass on Vercel preview. Requires project-owner mobile acceptance.
 
 ## Purpose
 
-Milestone 3 turns the passive NULL trace introduced in M2 into the first active threshold between indexed HOME and an unindexed region.
+Milestone 4 is the first real multi-scene slice. The M3 threshold is no longer only a communication surface: it mounts an isolated early V.E.R.A. snapshot, lets the player investigate that world, persists progress while inside it, and returns cleanly to HOME without losing earlier world state.
 
 The intended loop is:
 
-**touch the impossible trace → unlock Process Monitor → reconstruct the quarantine requester from prior evidence → open a process channel → watch HOME topology change → make first direct contact with NULL → choose whether to answer.**
+**open M3 threshold → cross into BACKUP_0_3 → meet V.E.R.A. 0.3 → inspect three physical training samples → classify HUMAN_CONTEXT in OMEGA OS → unlock a pre-persona archive clue → choose how much future truth to tell 0.3 → return to HOME → hear current V.E.R.A. react.**
 
-The milestone still uses primitive 3D geometry. It validates pacing, branch persistence and the transition from investigation to direct psychological-horror interaction.
+The backup deliberately uses crude neutral geometry and debug-grid language. This is diegetic prototype-space, not final environment art.
 
 ## Implemented
 
-- New M3 filesystem definition preserving all M1/M2 content.
-- `/system/processes` virtual directory.
-- Hidden, initially-offline `/system/processes/null_channel.proc`.
-- Third world binding: `null_channel.proc` controls `apartment.threshold_corridor`.
-- Existing NULL trace is now a real raycast interaction target.
-- Touching the trace unlocks a new PROCESS tab in OMEGA OS.
-- Process Monitor displays the unindexed NULL process, PID `0031`, last event time and lost-byte count.
-- Route reconstruction puzzle uses evidence already present in `recovery_1703.log`.
-- Correct route is `SYSTEM → NULL` because SYSTEM requested quarantine and VERA_CORE denied it.
-- Wrong route choices are rejected without altering HOME.
-- Correct route activates `null_channel.proc` and opens the threshold in HOME.
-- Threshold is rendered as a dark impossible doorway with nested animated process frames.
-- Hidden bound targets are excluded from raycast interaction.
-- First direct NULL contact uses the existing `null_doorway.svg` asset as dialogue portrait.
-- NULL reveals the next narrative lead: `BACKUP 0.3`.
-- First NULL decision:
-  - answer `Я слушаю`;
-  - refuse to answer and step away.
-- New persistent `null_affinity` state.
-- Existing `vera_trust` reacts to some combinations of the M2 and M3 choices.
-- V.E.R.A. dialogue reacts to whether the player previously told her about NULL and whether the player later answered it.
-- M0/M1/M2 saves upgrade in place.
+### Multi-scene lifecycle
+
+- Added `SceneRouter` with explicit HOME and `backup_0_3` scene IDs.
+- Active scene is persisted in canonical game state.
+- HOME return transform is persisted before entering a backup and restored on return.
+- Old M0–M3 scene IDs migrate to the M4 HOME scene without resetting player flags or filesystem mutations.
+- `WorldRenderer` now mounts one scene root at a time instead of treating the apartment as permanent global geometry.
+- Scene unmount clears focused interaction, entities and scene-specific interaction registry.
+- Unmounted geometry/materials are disposed before the next scene is constructed.
+- HOME lights and props are now scene-owned so they unload with HOME.
+- `WorldBindingSystem.clearTargets()` detaches stale scene targets during traversal.
+- HOME binding targets are re-registered after return and immediately re-evaluated against the same filesystem state.
+- HOME and BACKUP_0_3 use disjoint interaction IDs.
+- Scene routing is transactional: if the destination scene throws during mount, canonical scene/player/return-point state is restored and the previous scene is remounted.
+- The router rejects a second enter/return request once the first transition has changed scene state, preventing duplicate scene mounts from repeated input.
+- A failed mount releases the transition guard and can be retried cleanly.
+
+### BACKUP_0_3 world
+
+- Separate bright, neutral training sandbox scene.
+- Primitive V.E.R.A. 0.3 mannequin with a deliberately earlier/debug visual identity.
+- Three physical classification samples:
+  - cup — no executable function, but observer-linked meaning;
+  - image — no executable function, but retained as human context;
+  - relay — replaceable system service defined by function.
+- Dedicated training console.
+- Dedicated return threshold back to HOME.
+- Mobile movement/look/interact controls are reused without introducing a second input stack.
+
+### OMEGA OS / classification puzzle
+
+- Added backup-only OMEGA workspace.
+- Training set exposes `object_labels.log`.
+- Classifier remains locked until all three physical samples have been inspected.
+- Wrong `SERVICE` / `NOISE` classifications are rejected without unlocking content.
+- Correct `MEMORY` classification restores `/backups/vera_0_3/archive/human_source.index`.
+- Archive navigation appears only after the correct classification token is issued.
+- Classification attempts and solved state persist.
+
+### Story beat
+
+- V.E.R.A. 0.3 is more literal, curious and trusting of Dr Morr than current V.E.R.A.
+- The archive establishes that a `HUMAN_CONTEXT` source family existed before the VERA_0_3 persona build.
+- The archive records `E.MORR` as ingest owner while explicitly leaving identity mapping disabled.
+- This is evidence of a pre-persona human-source archive, not a full reveal of Vera Morr's identity.
+- The player chooses whether to warn V.E.R.A. 0.3 that future versions will lose memory or only tell her the archive matters.
+- Current V.E.R.A. reacts to both the mounted old snapshot and the player's information choice after returning.
+- Re-entering BACKUP_0_3 keeps solved puzzle/archive/choice state rather than replaying it as a fresh world.
+
+### Asset policy
+
+- No new final character art is invented for V.E.R.A. 0.3.
+- The 3D snapshot identity is represented with replaceable primitive geometry.
+- Dialogue temporarily uses the existing neutral V.E.R.A. SVG as a fallback and carries an explicit `TODO_ART` marker for a version-specific portrait.
+
+## Save compatibility
+
+The save schema version remains `1`.
+
+M4 adds an optional persisted HOME return point under `world.returnPoint` and new flags, but existing M0–M3 saves remain structurally valid. `upgradeStateForBackup03()` adds missing defaults and normalizes legacy HOME scene IDs without wiping:
+
+- M1 investigation state;
+- `sea_2017.img` mutation state;
+- recovered M2 log;
+- M2 evidence choice / `vera_trust`;
+- M3 NULL trace and process route;
+- open `null_channel.proc` threshold;
+- M3 NULL choice / `null_affinity`.
+
+A save made inside BACKUP_0_3 reloads inside the backup. A save made after returning reloads in HOME.
 
 ## Automated acceptance
 
-`npm run build` must run, in order:
+`npm run build` runs, in order:
 
 ```text
 tsc -p tsconfig.json
 M1 HOME regression: PASS
 M2 INVESTIGATION regression: PASS
 M3 THRESHOLD regression: PASS
+M4 BACKUP 0.3 regression: PASS
 ```
 
-M3 regression verifies:
+The M4 regression verifies:
 
-- the M2 recovery log still functions under M3 data;
-- the NULL channel starts deleted and hidden;
-- the NULL trace is active after the recovered log exists;
-- the threshold is absent before route reconstruction;
-- `VERA_CORE → NULL` is rejected;
-- `NULL → SYSTEM` is rejected;
-- `SYSTEM → NULL` is accepted;
-- activating the process channel immediately activates the threshold world binding;
-- the process snapshot becomes visible only after activation;
-- first NULL contact contains the `BACKUP 0.3` lead;
-- threshold/NULL branch/affinity state survives save-load;
-- reset closes the channel again.
+- a completed M3 save upgrades without reset;
+- M3 branch choice and open NULL channel survive migration;
+- the M3 threshold HOME binding is still active;
+- HOME and backup interaction IDs do not collide;
+- traversal persists `backup_0_3` as active scene and stores a HOME return transform;
+- repeated enter/return input produces exactly one destination mount;
+- a failed BACKUP mount restores HOME scene state, player transform and return-point state;
+- a failed HOME mount restores the BACKUP scene and preserves the original HOME return point;
+- failed mounts release the transition lock and allow a clean retry;
+- all three physical sample flags are required before classification;
+- invalid classification is rejected;
+- valid `MEMORY` classification unlocks the archive;
+- first V.E.R.A. 0.3 encounter, classification and archive state survive save/load;
+- reload while inside the backup remains inside the backup;
+- returning restores HOME transform;
+- returning HOME reattaches the old threshold binding;
+- current V.E.R.A. reaction state persists;
+- reload after return stays in HOME;
+- new game/reset starts in HOME with NULL channel and backup archive locked.
+
+The Vercel preview completes `npm run build` successfully with all four milestone regressions passing, including the transition rollback/double-input hardening checks.
 
 ## Manual mobile acceptance
 
-Use the normal production URL after merge.
+Use the M4 preview first, then the normal production URL after merge.
 
-1. Continue from the completed M2 save. No reset should be required.
-2. Confirm the current objective points to the faint contour on the right wall.
-3. Approach the contour until the interaction prompt says **Коснуться контура**.
-4. Interact once.
-5. Confirm a short V.E.R.A./SYSTEM exchange occurs and the objective changes to Process Monitor.
-6. Approach the computer and open OMEGA OS.
-7. Confirm a new **PROCESS** tab is visible. It must not have existed before touching the trace.
-8. Open PROCESS.
-9. Confirm NULL appears as an unindexed/quarantined process with PID `0031`.
-10. Try `VERA_CORE → NULL`; confirm the route is rejected and HOME does not change.
-11. Select `SYSTEM → NULL`.
-12. Confirm Process Monitor switches to `CHANNEL OPEN` and displays the reconstructed route.
-13. Close OMEGA OS.
-14. Look at the right wall. The former outline should now look like a dark impossible doorway/threshold rather than only a thin trace.
-15. Approach it. The interaction prompt should now prefer **Вслушаться в проход** rather than the old trace interaction.
-16. Interact.
-17. Confirm NULL speaks directly for the first time and mentions **BACKUP 0.3**.
-18. Confirm two touch-friendly choices appear: answer or refuse.
-19. Select one choice and make sure one tap cannot accidentally choose and then skip the following response.
-20. Confirm V.E.R.A.'s response reflects the branch where appropriate.
-21. Reload the page.
-22. Confirm PROCESS remains open, the threshold remains present, the NULL contact choice persists, and the objective still references `BACKUP 0.3`.
-23. Talk to V.E.R.A. again and confirm her line reflects the completed M3 branch.
+1. Continue from a completed M3 save. Do not reset.
+2. Confirm the existing photo/log/threshold state is unchanged.
+3. Approach the open threshold and interact once.
+4. Choose **Перейти в BACKUP 0.3**.
+5. Confirm one transition occurs; the HOME apartment must not remain visible or interactable behind the backup.
+6. Move/look around the bright prototype sandbox using touch controls.
+7. Meet V.E.R.A. 0.3 and confirm her wording feels earlier, more literal and more trusting of Dr Morr.
+8. Inspect the cup, image and relay. Each physical target should trigger once per tap without skipping dialogue.
+9. Approach the training console and open OMEGA OS.
+10. Before all samples are inspected, confirm classifier buttons are disabled.
+11. After all samples are inspected, try an incorrect category; confirm it is rejected and ARCHIVE remains unavailable.
+12. Select **MEMORY**; confirm ARCHIVE appears.
+13. Open `human_source.index` and confirm it states that HUMAN_CONTEXT predates persona 0.3 while identity mapping remains disabled.
+14. Close OMEGA OS and complete the V.E.R.A. 0.3 truth/limited-information choice.
+15. Reload before returning; confirm the player remains in BACKUP_0_3 with solved state preserved.
+16. Use the backup threshold to return to HOME.
+17. Confirm HOME contains exactly one apartment scene and no duplicate backup geometry/input response.
+18. Confirm the M3 threshold is still open and `sea_2017.img` is still present or absent exactly as before traversal.
+19. Confirm current V.E.R.A. reacts to the old snapshot and to the branch chosen with V.E.R.A. 0.3.
+20. Reload again; confirm the player remains in HOME and the M4 reaction is not duplicated.
+21. Re-enter BACKUP_0_3; confirm solved archive/choice state remains solved and the scene remains interactable.
+22. Use the OMEGA reset action; confirm a fresh game starts in HOME with the M3 channel and M4 archive locked.
+23. On iOS/Android portrait and landscape, confirm safe-area spacing, dialogue choices and classifier buttons remain comfortably touchable and no action double-fires.
 
-## Expected player understanding after M3
+## Expected player understanding after M4
 
 The player should now believe that:
 
-1. NULL is not merely a corrupted filename; something on the other side can deliberately communicate.
-2. V.E.R.A. has history with NULL and is afraid of it.
-3. SYSTEM and VERA_CORE are not synonymous actors.
-4. A much older version of V.E.R.A. — `BACKUP 0.3` — may contain memories the current V.E.R.A. cannot access.
+1. V.E.R.A. has existed in multiple persona builds and the current personality is not the original state.
+2. Older snapshots can contain information current V.E.R.A. cannot directly recall.
+3. Some human-context material predates V.E.R.A. 0.3 itself.
+4. Dr Morr was already involved with the early training system.
+5. The absence of a memory can itself be evidence of versioning or deliberate loss.
 
-The player should **not** yet know whether NULL is truthful, malicious, a failsafe, or another part of V.E.R.A.
+The player should **not** yet have a definitive identity mapping between V.E.R.A. and Vera Morr, nor a final explanation of NULL.
 
 ## Deliberately unresolved
 
-- The player cannot physically cross the threshold yet; M3 opens and contacts it, while traversal belongs to the next arc.
-- `BACKUP 0.3` is not yet accessible.
-- NULL still communicates in short damaged statements rather than normal conversation.
-- `vera_trust` and `null_affinity` are persisted but do not yet drive the full branching narrative matrix.
-- Final 3D character/environment art, animation and production audio remain outside M3 acceptance.
+- V.E.R.A. 0.3 still uses placeholder dialogue portrait art.
+- No production animation/audio or final backup environment assets are required for M4 acceptance.
+- The HUMAN_CONTEXT archive intentionally stops before a full Vera Morr identity reveal.
+- NULL's exact role remains unresolved.
+- The next milestone must build on the now-proven multi-scene lifecycle rather than bypassing it with a parallel navigation system.
 
 ---
 

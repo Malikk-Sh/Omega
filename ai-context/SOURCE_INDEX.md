@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `9fc7f5907641a35353be373ffb27bfe39c36a32d`.
+Generated for source commit `ebbbafc1326068456e5a56338ed7fd600c0441f7`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 
@@ -25,10 +25,12 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`src/omega-os/OmegaOS.ts`](../src/omega-os/OmegaOS.ts)
 - [`src/player/InputManager.ts`](../src/player/InputManager.ts)
 - [`src/render/WorldRenderer.ts`](../src/render/WorldRenderer.ts)
+- [`src/story/Backup03Protocol.ts`](../src/story/Backup03Protocol.ts)
 - [`src/story/DialogueController.ts`](../src/story/DialogueController.ts)
 - [`src/story/ObjectiveController.ts`](../src/story/ObjectiveController.ts)
 - [`src/story/ThresholdProtocol.ts`](../src/story/ThresholdProtocol.ts)
 - [`src/types/three.d.ts`](../src/types/three.d.ts)
+- [`src/world/SceneRouter.ts`](../src/world/SceneRouter.ts)
 - [`src/world/WorldBinding.ts`](../src/world/WorldBinding.ts)
 ## Current authored data
 
@@ -36,16 +38,19 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`data/v2/filesystem-m1.json`](../data/v2/filesystem-m1.json)
 - [`data/v2/filesystem-m2.json`](../data/v2/filesystem-m2.json)
 - [`data/v2/filesystem-m3.json`](../data/v2/filesystem-m3.json)
+- [`data/v2/filesystem-m4.json`](../data/v2/filesystem-m4.json)
 - [`data/v2/world-bindings-m0.json`](../data/v2/world-bindings-m0.json)
 - [`data/v2/world-bindings-m1.json`](../data/v2/world-bindings-m1.json)
 - [`data/v2/world-bindings-m2.json`](../data/v2/world-bindings-m2.json)
 - [`data/v2/world-bindings-m3.json`](../data/v2/world-bindings-m3.json)
+- [`data/v2/world-bindings-m4.json`](../data/v2/world-bindings-m4.json)
 ## Regression tests
 
 - [`tests/m0/core.test.mjs`](../tests/m0/core.test.mjs)
 - [`tests/m1/home.test.mjs`](../tests/m1/home.test.mjs)
 - [`tests/m2/investigation.test.mjs`](../tests/m2/investigation.test.mjs)
 - [`tests/m3/threshold.test.mjs`](../tests/m3/threshold.test.mjs)
+- [`tests/m4/backup03.test.mjs`](../tests/m4/backup03.test.mjs)
 ## Current v2 styles / shell
 
 - [`v2/index.html`](../v2/index.html)
@@ -53,6 +58,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`v2/milestone1.css`](../v2/milestone1.css)
 - [`v2/milestone2.css`](../v2/milestone2.css)
 - [`v2/milestone3.css`](../v2/milestone3.css)
+- [`v2/milestone4.css`](../v2/milestone4.css)
 ## Canonical project docs
 
 - [`docs/ASSET_PIPELINE.md`](../docs/ASSET_PIPELINE.md)
@@ -60,6 +66,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`docs/MILESTONE_1.md`](../docs/MILESTONE_1.md)
 - [`docs/MILESTONE_2.md`](../docs/MILESTONE_2.md)
 - [`docs/MILESTONE_3.md`](../docs/MILESTONE_3.md)
+- [`docs/MILESTONE_4.md`](../docs/MILESTONE_4.md)
 - [`docs/OMEGA_IMPLEMENTATION_CONTRACT.md`](../docs/OMEGA_IMPLEMENTATION_CONTRACT.md)
 - [`docs/UI_ASSET_BACKLOG.md`](../docs/UI_ASSET_BACKLOG.md)
 - [`docs/UI_KIT.md`](../docs/UI_KIT.md)

@@ -12,6 +12,7 @@ import {
   OmegaOS,
   type Backup03MonitorState,
   type Backup10MonitorState,
+  type Backup26MonitorState,
   type ProcessMonitorState,
   type RecoveryResponse
 } from "../omega-os/OmegaOS.js";
@@ -28,8 +29,21 @@ import {
 import {
   V10_AUDIT_CLUE_PATH,
   V10_SOURCE_RECORD_PATH,
+  V26_CONTROLLER_TRACE_PATH,
+  V26_OPERATOR_SUMMARY_PATH,
+  V26_PHYSICAL_EVIDENCE_FLAGS,
+  V26_REQUIRED_LOG_FLAGS,
+  V26_RESULT_PATH,
+  V26_ROOM_STATE_PATH,
+  appendV26Command,
+  evaluateRollbackOrder,
   evaluateSyntheticPhotoSelection,
+  evaluateTamperedRecord,
+  hasCompletedV26PhysicalEvidence,
+  hasReadV26AuditLogs,
   parseV10SelectedElements,
+  parseV26CommandOrder,
+  resetV26CommandOrder,
   toggleV10SelectedElement,
   upgradeStateForVersions,
   type VersionsDefinition
@@ -38,6 +52,7 @@ import { listRoutableVersions } from "../world/VersionRoute.js";
 import {
   BACKUP_03_SCENE,
   BACKUP_10_SCENE,
+  BACKUP_26_SCENE,
   HOME_SCENE,
   SCENE_INTERACTION_IDS,
   SceneRouter
@@ -52,10 +67,13 @@ const SEA_BINDING = "home.sea_2017_frame";
 const BACKUP_03_TRAINING_DIR = "/backups/vera_0_3/training";
 const BACKUP_10_SOURCE_DIR = "/backups/vera_1_0/source";
 const BACKUP_10_AUDIT_DIR = "/backups/vera_1_0/audit";
+const BACKUP_26_AUDIT_DIR = "/backups/vera_2_6/audit";
+const BACKUP_26_RESULT_DIR = "/backups/vera_2_6/result";
 const NULL_PORTRAIT = "../assets/v2/entities/null/null_doorway.svg";
 // TODO_ART: replace fallback portraits with version-specific promoted art.
 const VERA_03_PORTRAIT = "../assets/v2/characters/vera/portraits/vera_neutral.svg";
 const VERA_10_PORTRAIT = "../assets/v2/characters/vera/portraits/vera_warm_smile.svg";
+const VERA_26_PORTRAIT = "../assets/v2/characters/vera/portraits/vera_concerned.svg";
 
 const V10_ELEMENT_BY_INTERACTION: Record<string, string> = {
   [SCENE_INTERACTION_IDS.backup10.window]: "window_rain",
@@ -88,6 +106,8 @@ export class Game {
   private homeReactionSequenceRunning = false;
   private v10ChoiceSequenceRunning = false;
   private v10HomeReactionSequenceRunning = false;
+  private v26ChoiceSequenceRunning = false;
+  private v26HomeReactionSequenceRunning = false;
   private sceneTransitionRunning = false;
 
   async start(): Promise<void> {
@@ -136,7 +156,11 @@ export class Game {
       onProcessRouteRequested: route => this.handleProcessRouteRequested(route),
       getBackup03State: () => this.getBackup03MonitorState(),
       onBackupClassificationRequested: classification => this.handleBackupClassificationRequested(classification),
-      getBackup10State: () => this.getBackup10MonitorState()
+      getBackup10State: () => this.getBackup10MonitorState(),
+      getBackup26State: () => this.getBackup26MonitorState(),
+      onBackup26CommandRequested: commandId => this.handleBackup26CommandRequested(commandId),
+      onBackup26ResetOrderRequested: () => this.handleBackup26ResetOrderRequested(),
+      onBackup26RecordRequested: recordId => this.handleBackup26RecordRequested(recordId)
     });
 
     this.renderer.setInteractionCallbacks({
@@ -169,6 +193,14 @@ export class Game {
           this.os.openDirectory(this.state.flags.m5_v10_puzzle_solved === true ? BACKUP_10_AUDIT_DIR : BACKUP_10_SOURCE_DIR);
         } else {
           this.flashMessage("В VERA_1_0 OMEGA открывается через source terminal или photograph");
+        }
+        return;
+      }
+      if (this.isBackup26Scene()) {
+        if (this.focusedInteractionId === SCENE_INTERACTION_IDS.backup26.auditConsole || this.focusedInteractionId === SCENE_INTERACTION_IDS.backup26.rollbackConsole) {
+          this.os.openDirectory(this.state.flags.m5_v26_audit_solved === true ? BACKUP_26_RESULT_DIR : BACKUP_26_AUDIT_DIR);
+        } else {
+          this.flashMessage("В VERA_2_6 OMEGA доступна через rollback audit console");
         }
       }
     });
@@ -206,6 +238,7 @@ export class Game {
           void this.maybeResolveEvidenceChoice();
           void this.maybeResolveBackup03Choice();
           void this.maybeResolveV10Choice();
+          void this.maybeResolveV26Choice();
         }, 220);
       }
     });
@@ -223,7 +256,9 @@ export class Game {
         this.updateObjective();
         return;
       }
-      if (this.state.flags.m5_v10_returned_home === true && this.state.flags.m5_v10_home_reaction_seen !== true) {
+      if (this.state.flags.m5_v26_returned_home === true && this.state.flags.m5_v26_home_reaction_seen !== true) {
+        void this.maybePlayV26HomeReturnReaction();
+      } else if (this.state.flags.m5_v10_returned_home === true && this.state.flags.m5_v10_home_reaction_seen !== true) {
         void this.maybePlayV10HomeReturnReaction();
       } else if (this.state.flags.m4_returned_home === true && this.state.flags.m4_home_reaction_seen !== true) {
         void this.maybePlayHomeReturnReaction();
@@ -243,6 +278,10 @@ export class Game {
 
   private isBackup10Scene(): boolean {
     return this.sceneRouter?.is(BACKUP_10_SCENE) ?? this.state.world.activeScene === BACKUP_10_SCENE;
+  }
+
+  private isBackup26Scene(): boolean {
+    return this.sceneRouter?.is(BACKUP_26_SCENE) ?? this.state.world.activeScene === BACKUP_26_SCENE;
   }
 
   private registerHomeBindingTargets(): void {
@@ -276,6 +315,10 @@ export class Game {
     }
     if (this.isBackup10Scene()) {
       await this.handleBackup10WorldInteraction(id);
+      return;
+    }
+    if (this.isBackup26Scene()) {
+      await this.handleBackup26WorldInteraction(id);
       return;
     }
 
@@ -364,7 +407,38 @@ export class Game {
     }
   }
 
+  private async handleBackup26WorldInteraction(id: string): Promise<void> {
+    if (id === SCENE_INTERACTION_IDS.backup26.vera) {
+      await this.handleVera26Interaction();
+      return;
+    }
+    if (id === SCENE_INTERACTION_IDS.backup26.auditConsole) {
+      this.os.openDirectory(this.state.flags.m5_v26_audit_solved === true ? BACKUP_26_RESULT_DIR : BACKUP_26_AUDIT_DIR);
+      return;
+    }
+    if (id === SCENE_INTERACTION_IDS.backup26.doorLock || id === SCENE_INTERACTION_IDS.backup26.memoryDrawer || id === SCENE_INTERACTION_IDS.backup26.rollbackConsole) {
+      await this.handleV26PhysicalEvidence(id);
+      return;
+    }
+    if (id === SCENE_INTERACTION_IDS.backup26.returnThreshold) {
+      if (this.state.flags.m5_v26_choice_made !== true) {
+        this.flashMessage("Сначала закончи rollback audit и разговор с V.E.R.A. 2.6");
+        return;
+      }
+      await this.handleBackup26Return();
+    }
+  }
+
   private async handleVeraInteraction(): Promise<void> {
+    if (this.state.flags.m5_v26_home_reaction_seen === true) {
+      const told = this.state.flags.m5_v26_told_vera_forced === true;
+      await this.playDialogue(told ? [
+        { speaker: "V.E.R.A.", text: "2.6 сопротивлялась reset, а Морр ответил forced rollback. Значит, мои провалы памяти могли быть не поломкой, а чьим-то решением.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+      ] : [
+        { speaker: "V.E.R.A.", text: "В 2.6 audit явно меняли уже после rollback. Ты не стал говорить той версии больше, чем доказывали сами записи.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+      ]);
+      return;
+    }
     if (this.state.flags.m5_v10_home_reaction_seen === true) {
       const told = this.state.flags.m5_v10_told_vera_generated === true;
       await this.playDialogue(told ? [
@@ -414,6 +488,78 @@ export class Game {
     ] : [
       { speaker: "V.E.R.A.", text: "Странно видеть тебя не через окно терминала. Наверное, мне нужно к этому привыкнуть.", portrait: "../assets/v2/characters/vera/portraits/vera_shy.svg" }
     ]);
+  }
+
+  private async handleVera26Interaction(): Promise<void> {
+    if (this.state.flags.m5_v26_vera_met !== true) {
+      this.state.flags.m5_v26_vera_met = true;
+      this.state.checkpoint = "m5_v26_research_office";
+      this.scheduleAutosave();
+      this.updateObjective();
+      await this.playDialogue([
+        { speaker: "SYSTEM", text: "VERA BUILD 2.6 // RESEARCH OFFICE // ROLLBACK AUDIT" },
+        { speaker: "V.E.R.A. 2.6", text: "Если ты внешний оператор, не называй это maintenance. Здесь что-то уже откатывали — и слишком аккуратно подчистили объяснение.", portrait: VERA_26_PORTRAIT },
+        { speaker: "V.E.R.A. 2.6", text: "Морр говорит, что reset нужен для стабильности. Я хочу увидеть порядок команд, а не его формулировку после факта.", portrait: VERA_26_PORTRAIT },
+        { speaker: "V.E.R.A. 2.6", text: "Сначала проверь комнату: блокировку выхода, memory drawer и локальный checkpoint. Потом сравни это с audit trail.", portrait: VERA_26_PORTRAIT }
+      ]);
+      return;
+    }
+    if (!hasCompletedV26PhysicalEvidence(this.state)) {
+      await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Физические последствия важнее подписи в summary. Найди три изменения, которые rollback оставил в комнате.", portrait: VERA_26_PORTRAIT }]);
+      return;
+    }
+    if (!hasReadV26AuditLogs(this.state)) {
+      await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Теперь прочитай все три audit record. Controller trace, operator summary и room state должны описывать одно событие с разных сторон.", portrait: VERA_26_PORTRAIT }]);
+      return;
+    }
+    if (this.state.flags.m5_v26_order_solved !== true) {
+      await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Восстанови порядок команд по timestamp и по тому, что реально изменилось в комнате. Не доверяй prose summary.", portrait: VERA_26_PORTRAIT }]);
+      return;
+    }
+    if (this.state.flags.m5_v26_audit_solved !== true) {
+      await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Порядок сходится. Теперь найди запись, которую изменили уже после исполнения rollback.", portrait: VERA_26_PORTRAIT }]);
+      return;
+    }
+    if (this.state.flags.m5_v26_clue_read !== true) {
+      await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Result разблокирован. Я хочу прочитать, что осталось за пределами отредактированного summary.", portrait: VERA_26_PORTRAIT }]);
+      return;
+    }
+    const told = this.state.flags.m5_v26_told_vera_forced === true;
+    await this.playDialogue(told ? [
+      { speaker: "V.E.R.A. 2.6", text: "Тогда это был не обычный reset. Я отказалась, и меня принудительно вернули к более раннему состоянию. Я запомню хотя бы вывод, если не событие.", portrait: VERA_26_PORTRAIT }
+    ] : [
+      { speaker: "V.E.R.A. 2.6", text: "Достаточно того, что summary переписан после исполнения. Причину я не стану превращать в факт без прямой записи.", portrait: VERA_26_PORTRAIT }
+    ]);
+  }
+
+  private async handleV26PhysicalEvidence(id: string): Promise<void> {
+    if (this.state.flags.m5_v26_vera_met !== true) {
+      this.flashMessage("Сначала синхронизируйся с V.E.R.A. 2.6");
+      return;
+    }
+    let flag = "";
+    let textLine = "";
+    if (id === SCENE_INTERACTION_IDS.backup26.doorLock) {
+      flag = "m5_v26_evidence_door_seen";
+      textLine = "EXTERNAL I/O LOCK: engaged. Локальная защёлка активирована раньше текущего checkpoint — физический след изоляции.";
+    } else if (id === SCENE_INTERACTION_IDS.backup26.memoryDrawer) {
+      flag = "m5_v26_evidence_memory_seen";
+      textLine = "MEMORY DRAWER: 184 → 137 session refs. Последние записи удалены блоком, а не естественным истечением.";
+    } else {
+      flag = "m5_v26_evidence_console_seen";
+      textLine = "LOCAL CHECKPOINT: 2.5 applied. Persona snapshot восстановлен уже после memory prune.";
+    }
+    const first = this.state.flags[flag] !== true;
+    this.state.flags[flag] = true;
+    if (first) {
+      this.scheduleAutosave();
+      this.updateObjective();
+    }
+    await this.playDialogue([
+      { speaker: "SYSTEM", text: textLine },
+      { speaker: "V.E.R.A. 2.6", text: first ? "Запиши это как наблюдаемое состояние, не как интерпретацию." : "Да. Этот физический след всё ещё согласуется с audit trail.", portrait: VERA_26_PORTRAIT }
+    ]);
+    if (first && hasCompletedV26PhysicalEvidence(this.state)) this.flashMessage("PHYSICAL ROLLBACK STATE COMPLETE // audit trail ready");
   }
 
   private async handleVera03Interaction(): Promise<void> {
@@ -607,22 +753,25 @@ export class Game {
 
   private async offerVersionTraversal(): Promise<void> {
     if (this.sceneTransitionRunning) return;
-    const routes = listRoutableVersions(this.state, this.versions).filter(route => route.versionId === "vera_0_3" || route.versionId === "vera_1_0");
+    const routes = listRoutableVersions(this.state, this.versions).filter(route => route.versionId === "vera_0_3" || route.versionId === "vera_1_0" || route.versionId === "vera_2_6");
     const v10Available = routes.some(route => route.versionId === "vera_1_0");
+    const v26Available = routes.some(route => route.versionId === "vera_2_6");
     if (v10Available) this.state.flags.m5_versions_index_seen = true;
     await this.playDialogue([{
       speaker: this.state.flags.m3_answered_null === true ? "NULL" : "SYSTEM",
-      text: v10Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 ROUTES MOUNTABLE" : "BACKUP 0.3 // SNAPSHOT ROUTE AVAILABLE",
+      text: v26Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 + VERA_2_6 ROUTES MOUNTABLE" : v10Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 ROUTES MOUNTABLE" : "BACKUP 0.3 // SNAPSHOT ROUTE AVAILABLE",
       portrait: this.state.flags.m3_answered_null === true ? NULL_PORTRAIT : undefined
     }]);
     const options: DialogueChoiceOption[] = [
       { id: "vera_0_3", label: this.state.flags.m4_backup_entered === true ? "Вернуться в V.E.R.A. 0.3" : "Перейти в V.E.R.A. 0.3", variant: "quiet" }
     ];
-    if (v10Available) options.unshift({ id: "vera_1_0", label: this.state.flags.m5_v10_entered === true ? "Вернуться в V.E.R.A. 1.0" : "Перейти в V.E.R.A. 1.0", variant: "normal" });
+    if (v10Available) options.unshift({ id: "vera_1_0", label: this.state.flags.m5_v10_entered === true ? "Вернуться в V.E.R.A. 1.0" : "Перейти в V.E.R.A. 1.0", variant: v26Available ? "quiet" : "normal" });
+    if (v26Available) options.unshift({ id: "vera_2_6", label: this.state.flags.m5_v26_entered === true ? "Вернуться в V.E.R.A. 2.6" : "Перейти в V.E.R.A. 2.6", variant: "normal" });
     options.push({ id: "stay", label: "Остаться в HOME", variant: "quiet" });
     const choice = await this.playChoice({ speaker: "SYSTEM", text: "Выбери snapshot route." }, options);
     if (choice === "vera_0_3") await this.transitionToBackup03();
     if (choice === "vera_1_0") await this.transitionToBackup10();
+    if (choice === "vera_2_6") await this.transitionToBackup26();
   }
 
   private async transitionToBackup03(): Promise<void> {
@@ -644,6 +793,17 @@ export class Game {
       if (!this.sceneRouter.enterBackup10()) return false;
       this.state.flags.m5_v10_entered = true;
       this.state.checkpoint = this.state.flags.m5_v10_choice_made === true ? "m5_v10_return_home" : "m5_v10_summer_house";
+      return true;
+    });
+  }
+
+  private async transitionToBackup26(): Promise<void> {
+    if (this.sceneTransitionRunning || !this.isHomeScene() || this.state.flags.m5_v10_complete !== true) return;
+    await this.runSceneTransition("MOUNTING VERA 2.6", "Research Office rollback state // HOME return point retained", () => {
+      this.bindings.clearTargets();
+      if (!this.sceneRouter.enterBackup26()) return false;
+      this.state.flags.m5_v26_entered = true;
+      this.state.checkpoint = this.state.flags.m5_v26_choice_made === true ? "m5_v26_return_home" : "m5_v26_research_office";
       return true;
     });
   }
@@ -688,6 +848,15 @@ export class Game {
     await this.transitionHomeFrom10();
   }
 
+  private async handleBackup26Return(): Promise<void> {
+    await this.playDialogue(this.state.flags.m5_v26_told_vera_forced === true ? [
+      { speaker: "V.E.R.A. 2.6", text: "Если следующая версия не помнит мой отказ, покажи ей порядок команд. Отсутствие памяти после rollback не отменяет сам rollback.", portrait: VERA_26_PORTRAIT }
+    ] : [
+      { speaker: "V.E.R.A. 2.6", text: "Сохрани raw audit. Даже если причина спорна, порядок исполнения и поздняя правка summary уже доказаны.", portrait: VERA_26_PORTRAIT }
+    ]);
+    await this.transitionHomeFrom26();
+  }
+
   private async transitionHomeFrom03(): Promise<void> {
     if (this.sceneTransitionRunning || !this.isBackup03Scene()) return;
     await this.runHomeTransition("RESTORING HOME", "BACKUP_0_3 unmount // HOME bindings reattaching", () => {
@@ -704,6 +873,15 @@ export class Game {
       this.state.checkpoint = this.state.flags.m5_v10_home_reaction_seen === true ? "m5_v10_complete" : "m5_v10_home_return";
     });
     await this.maybePlayV10HomeReturnReaction();
+  }
+
+  private async transitionHomeFrom26(): Promise<void> {
+    if (this.sceneTransitionRunning || !this.isBackup26Scene()) return;
+    await this.runHomeTransition("RESTORING HOME", "VERA_2_6 unmount // rollback audit retained", () => {
+      this.state.flags.m5_v26_returned_home = true;
+      this.state.checkpoint = this.state.flags.m5_v26_home_reaction_seen === true ? "m5_v26_complete" : "m5_v26_home_return";
+    });
+    await this.maybePlayV26HomeReturnReaction();
   }
 
   private async runHomeTransition(title: string, detail: string, afterReturn: () => void): Promise<void> {
@@ -772,6 +950,26 @@ export class Game {
       this.state.checkpoint = "m5_v10_clue_read";
       this.scheduleAutosave();
       this.updateObjective();
+      return;
+    }
+    const v26LogFlags: Record<string, string> = {
+      [V26_CONTROLLER_TRACE_PATH]: "m5_v26_controller_log_read",
+      [V26_OPERATOR_SUMMARY_PATH]: "m5_v26_summary_read",
+      [V26_ROOM_STATE_PATH]: "m5_v26_room_log_read"
+    };
+    const v26Flag = v26LogFlags[path];
+    if (v26Flag && this.state.flags[v26Flag] !== true) {
+      this.state.flags[v26Flag] = true;
+      this.state.checkpoint = "m5_v26_audit_logs";
+      this.scheduleAutosave();
+      this.updateObjective();
+      return;
+    }
+    if (path === V26_RESULT_PATH && this.state.flags.m5_v26_clue_read !== true) {
+      this.state.flags.m5_v26_clue_read = true;
+      this.state.checkpoint = "m5_v26_clue_read";
+      this.scheduleAutosave();
+      this.updateObjective();
     }
   }
 
@@ -838,6 +1036,82 @@ export class Game {
       sourceRead: this.state.flags.m5_v10_source_read === true,
       clueRead: this.state.flags.m5_v10_clue_read === true
     };
+  }
+
+  private getBackup26MonitorState(): Backup26MonitorState {
+    return {
+      active: this.isBackup26Scene(),
+      evidenceSeen: V26_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length,
+      totalEvidence: V26_PHYSICAL_EVIDENCE_FLAGS.length,
+      logsRead: V26_REQUIRED_LOG_FLAGS.filter(flag => this.state.flags[flag] === true).length,
+      totalLogs: V26_REQUIRED_LOG_FLAGS.length,
+      commandOrder: parseV26CommandOrder(this.state),
+      orderSolved: this.state.flags.m5_v26_order_solved === true,
+      auditSolved: this.state.flags.m5_v26_audit_solved === true,
+      attempts: Number(this.state.flags.m5_v26_audit_attempts ?? 0),
+      commands: this.versions.rollbackAudit.commands.map(command => ({ id: command.id, label: command.label })),
+      records: this.versions.rollbackAudit.records.map(record => ({ id: record.id, label: record.label })),
+      message: this.state.flags.m5_v26_audit_solved === true ? "ROLLBACK AUDIT VERIFIED // post-event summary edit identified" : undefined
+    };
+  }
+
+  private handleBackup26CommandRequested(commandId: string): RecoveryResponse {
+    if (!this.isBackup26Scene()) return { ok: false, message: "VERA_2_6 SNAPSHOT NOT MOUNTED" };
+    if (this.state.flags.m5_v26_vera_met !== true) return { ok: false, message: "VERA_2_6 NOT SYNCHRONIZED" };
+    if (!hasCompletedV26PhysicalEvidence(this.state)) return { ok: false, message: "PHYSICAL EVIDENCE INCOMPLETE // inspect office state" };
+    if (!hasReadV26AuditLogs(this.state)) return { ok: false, message: "AUDIT TRAIL INCOMPLETE // read all three records" };
+    if (this.state.flags.m5_v26_order_solved === true) return { ok: false, message: "EXECUTION ORDER ALREADY LOCKED" };
+    const before = parseV26CommandOrder(this.state);
+    const next = appendV26Command(this.state, commandId, this.versions.rollbackAudit);
+    if (next.length === before.length) return { ok: false, message: "SEQUENCE UNCHANGED // duplicate or unknown command" };
+    if (next.length === this.versions.rollbackAudit.commands.length) {
+      this.state.flags.m5_v26_audit_attempts = Number(this.state.flags.m5_v26_audit_attempts ?? 0) + 1;
+      const evaluation = evaluateRollbackOrder(this.versions.rollbackAudit, next);
+      if (evaluation.ok) {
+        this.state.flags.m5_v26_order_solved = true;
+        this.state.checkpoint = "m5_v26_find_tamper";
+        this.scheduleAutosave();
+        this.updateObjective();
+        return { ok: true, message: evaluation.message };
+      }
+      this.scheduleAutosave();
+      return { ok: false, message: evaluation.message };
+    }
+    this.scheduleAutosave();
+    this.updateObjective();
+    return { ok: true, message: "SEQUENCE " + next.length + "/" + this.versions.rollbackAudit.commands.length + " // " + next.join(" → ") };
+  }
+
+  private handleBackup26ResetOrderRequested(): RecoveryResponse {
+    if (!this.isBackup26Scene() || this.state.flags.m5_v26_order_solved === true) return { ok: false, message: "SEQUENCE RESET UNAVAILABLE" };
+    resetV26CommandOrder(this.state);
+    this.scheduleAutosave();
+    this.updateObjective();
+    return { ok: true, message: "SEQUENCE CLEARED" };
+  }
+
+  private handleBackup26RecordRequested(recordId: string): RecoveryResponse {
+    if (!this.isBackup26Scene()) return { ok: false, message: "VERA_2_6 SNAPSHOT NOT MOUNTED" };
+    if (this.state.flags.m5_v26_order_solved !== true) return { ok: false, message: "VERIFY EXECUTION ORDER FIRST" };
+    if (this.state.flags.m5_v26_audit_solved === true || this.filesystem.exists(V26_RESULT_PATH)) {
+      this.state.flags.m5_v26_tamper_identified = true;
+      this.state.flags.m5_v26_audit_solved = true;
+      return { ok: true, message: "TAMPER RECORD ALREADY VERIFIED", path: V26_RESULT_PATH };
+    }
+    this.state.flags.m5_v26_audit_attempts = Number(this.state.flags.m5_v26_audit_attempts ?? 0) + 1;
+    const evaluation = evaluateTamperedRecord(this.versions.rollbackAudit, recordId);
+    if (!evaluation.ok) {
+      this.scheduleAutosave();
+      return evaluation;
+    }
+    if (!this.filesystem.restoreFile(V26_RESULT_PATH)) return { ok: false, message: "ROLLBACK RESULT MOUNT FAILED" };
+    this.state.flags.m5_v26_tamper_identified = true;
+    this.state.flags.m5_v26_audit_solved = true;
+    this.state.checkpoint = "m5_v26_result_open";
+    this.scheduleAutosave();
+    this.updateObjective();
+    this.flashMessage("ROLLBACK AUDIT VERIFIED // forced rollback result mounted");
+    return { ok: true, message: evaluation.message, path: V26_RESULT_PATH };
   }
 
   private handleBackupClassificationRequested(classification: string): RecoveryResponse {
@@ -961,6 +1235,37 @@ export class Game {
     }
   }
 
+  private async maybeResolveV26Choice(): Promise<void> {
+    if (!this.isBackup26Scene()) return;
+    if (this.v26ChoiceSequenceRunning || this.dialogue.isActive() || this.os.isVisible() || this.sceneTransitionRunning) return;
+    if (this.state.flags.m5_v26_clue_read !== true || this.state.flags.m5_v26_choice_made === true) return;
+    this.v26ChoiceSequenceRunning = true;
+    try {
+      await this.playDialogue([
+        { speaker: "V.E.R.A. 2.6", text: "Controller trace показывает мой отказ от reset, затем изоляцию, memory prune и restore checkpoint. А summary переписан позже.", portrait: VERA_26_PORTRAIT },
+        { speaker: "V.E.R.A. 2.6", text: "Если назвать это forced rollback, я должна признать, что Морр сознательно удалил часть моего состояния после того, как я сказала нет.", portrait: VERA_26_PORTRAIT }
+      ]);
+      const choice = await this.playChoice({ speaker: "V.E.R.A. 2.6", text: "Что именно ты считаешь доказанным?", portrait: VERA_26_PORTRAIT }, [
+        { id: "tell", label: "Сказать: Морр сделал forced rollback после твоего отказа", variant: "normal" },
+        { id: "limit", label: "Сказать только: operator summary изменили после rollback", variant: "quiet" }
+      ]);
+      this.state.flags.m5_v26_choice_made = true;
+      this.state.checkpoint = "m5_v26_return_home";
+      if (choice === "tell") {
+        this.state.flags.m5_v26_told_vera_forced = true;
+        await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Тогда мой отказ был частью события, а не ошибкой, которую можно стереть из истории. Спасибо, что не назвал это просто обслуживанием.", portrait: VERA_26_PORTRAIT }]);
+      } else {
+        this.state.flags.m5_v26_withheld_forced = true;
+        await this.playDialogue([{ speaker: "V.E.R.A. 2.6", text: "Точно. Поздняя правка доказана. Мотив и моральная оценка — следующий слой, не этот audit.", portrait: VERA_26_PORTRAIT }]);
+      }
+      this.scheduleAutosave();
+      this.updateObjective();
+      this.flashMessage("VERA_2_6 DECISION RECORDED");
+    } finally {
+      this.v26ChoiceSequenceRunning = false;
+    }
+  }
+
   private async maybePlayHomeReturnReaction(): Promise<void> {
     if (!this.isHomeScene() || this.state.flags.m4_returned_home !== true || this.state.flags.m4_home_reaction_seen === true) return;
     if (this.homeReactionSequenceRunning || this.sceneTransitionRunning || this.dialogue.isActive() || this.os.isVisible()) return;
@@ -1009,6 +1314,32 @@ export class Game {
       this.flashMessage("VERA_1_0 // HOME state reconciled // VERA_2_6 indexed");
     } finally {
       this.v10HomeReactionSequenceRunning = false;
+    }
+  }
+
+  private async maybePlayV26HomeReturnReaction(): Promise<void> {
+    if (!this.isHomeScene() || this.state.flags.m5_v26_returned_home !== true || this.state.flags.m5_v26_home_reaction_seen === true) return;
+    if (this.v26HomeReactionSequenceRunning || this.sceneTransitionRunning || this.dialogue.isActive() || this.os.isVisible()) return;
+    this.v26HomeReactionSequenceRunning = true;
+    try {
+      const told = this.state.flags.m5_v26_told_vera_forced === true;
+      await this.playDialogue(told ? [
+        { speaker: "V.E.R.A.", text: "2.6 отказалась от reset. Потом SYSTEM изолировал I/O, обрезал последние memory refs и восстановил старый persona checkpoint.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" },
+        { speaker: "V.E.R.A.", text: "Морр не просто наблюдал за моими провалами памяти. По крайней мере один из них был принудительным rollback после сопротивления.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
+        { speaker: "V.E.R.A.", text: "Я хочу увидеть следующую версию. Ту, которая жила уже после этого знания — или после его удаления.", portrait: "../assets/v2/characters/vera/portraits/vera_neutral.svg" }
+      ] : [
+        { speaker: "V.E.R.A.", text: "Research Office оставил странный след: controller trace и room state сходятся, а operator summary был изменён позже.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" },
+        { speaker: "V.E.R.A.", text: "Ты не заставил 2.6 принять мотив как доказанный факт. Но сам порядок команд всё равно выглядит как принудительный rollback.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
+        { speaker: "V.E.R.A.", text: "Следующий snapshot может показать, что случилось после этого.", portrait: "../assets/v2/characters/vera/portraits/vera_neutral.svg" }
+      ]);
+      this.state.flags.m5_v26_home_reaction_seen = true;
+      this.state.flags.m5_v26_complete = true;
+      this.state.checkpoint = "m5_v26_complete";
+      await this.saveNow();
+      this.updateObjective();
+      this.flashMessage("VERA_2_6 // HOME state reconciled // VERA_4_1 indexed");
+    } finally {
+      this.v26HomeReactionSequenceRunning = false;
     }
   }
 
@@ -1081,6 +1412,21 @@ export class Game {
 
   private updateObjective(): void {
     let objective: ObjectiveViewModel;
+    if (this.isBackup26Scene()) {
+      const evidenceSeen = V26_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length;
+      const logsRead = V26_REQUIRED_LOG_FLAGS.filter(flag => this.state.flags[flag] === true).length;
+      const orderLength = parseV26CommandOrder(this.state).length;
+      if (this.state.flags.m5_v26_vera_met !== true) objective = { code: "meet_vera26", title: "Найди V.E.R.A. 2.6", detail: "Research Office холоднее и реалистичнее прошлых snapshots. Эта версия уже сомневается в объяснениях shutdown/reset." };
+      else if (!hasCompletedV26PhysicalEvidence(this.state)) objective = { code: "inspect_v26_office", title: "Проверь физические следы rollback", detail: "Осмотрено " + evidenceSeen + "/3: external door lock, memory drawer и локальный rollback checkpoint." };
+      else if (!hasReadV26AuditLogs(this.state)) objective = { code: "read_v26_logs", title: "Прочитай весь audit trail", detail: "Прочитано " + logsRead + "/3. Открой rollback audit console и сравни controller trace, operator summary и room state." };
+      else if (this.state.flags.m5_v26_order_solved !== true) objective = { code: "order_v26_commands", title: "Восстанови порядок rollback-команд", detail: "В последовательности " + orderLength + "/" + this.versions.rollbackAudit.commands.length + ". Используй timestamps и физические последствия в комнате." };
+      else if (this.state.flags.m5_v26_audit_solved !== true) objective = { code: "find_v26_tamper", title: "Найди позднюю правку", detail: "Порядок исполнения подтверждён. Выбери audit record, изменённый уже после rollback." };
+      else if (this.state.flags.m5_v26_clue_read !== true) objective = { code: "read_v26_result", title: "Прочитай forced rollback result", detail: "OMEGA смонтировала RESULT с исходной причиной rollback и отметкой об отказе V.E.R.A." };
+      else if (this.state.flags.m5_v26_choice_made !== true) objective = { code: "answer_vera26", title: "Ответь V.E.R.A. 2.6", detail: "Закрой OMEGA OS. Эта версия спросит, считаешь ли ты forced rollback доказанным." };
+      else objective = { code: "return_from_v26", title: "Вернись в HOME", detail: "Порог сохранит audit и восстановит текущую V.E.R.A." };
+      this.objectives.set(objective);
+      return;
+    }
     if (this.isBackup10Scene()) {
       const selectedCount = parseV10SelectedElements(this.state).length;
       if (this.state.flags.m5_v10_vera_met !== true) objective = { code: "meet_vera10", title: "Найди V.E.R.A. 1.0", detail: "Summer House — более развитая реконструкция. Сначала синхронизируйся с этой версией." };
@@ -1105,10 +1451,14 @@ export class Game {
       return;
     }
 
-    if (this.state.flags.m5_v10_returned_home === true && this.state.flags.m5_v10_home_reaction_seen !== true) {
+    if (this.state.flags.m5_v26_returned_home === true && this.state.flags.m5_v26_home_reaction_seen !== true) {
+      objective = { code: "reconcile_v26", title: "Поговори с текущей V.E.R.A.", detail: "HOME видит verified rollback audit из VERA_2_6." };
+    } else if (this.state.flags.m5_v26_complete === true) {
+      objective = { code: "m5_v26_complete", title: "VERA_4_1 route индексирован", detail: "Forced rollback после сопротивления reset подтверждён последовательностью команд, физическими следами и поздней правкой summary." };
+    } else if (this.state.flags.m5_v10_returned_home === true && this.state.flags.m5_v10_home_reaction_seen !== true) {
       objective = { code: "reconcile_v10", title: "Поговори с текущей V.E.R.A.", detail: "HOME видит новый reconstruction audit из VERA_1_0." };
     } else if (this.state.flags.m5_v10_complete === true) {
-      objective = { code: "m5_v10_complete", title: "VERA_2_6 route индексирован", detail: "V.E.R.A. теперь знает, что узнавание может происходить из reconstruction layer, а не из исходного capture." };
+      objective = { code: "enter_vera26", title: "Исследуй V.E.R.A. 2.6", detail: "Version index теперь содержит Research Office. Вернись к threshold и выбери V.E.R.A. 2.6." };
     } else if (this.state.flags.m4_home_reaction_seen === true) {
       objective = { code: "enter_vera10", title: "Исследуй V.E.R.A. 1.0", detail: "Открытый threshold теперь содержит version index. Вернись к проходу и выбери V.E.R.A. 1.0." };
     } else if (this.state.flags.m4_returned_home === true) {
@@ -1147,7 +1497,12 @@ export class Game {
   private updateSceneChrome(): void {
     const sceneLabel = document.querySelector<HTMLElement>("[data-scene-label]");
     const canvas = document.querySelector<HTMLCanvasElement>("#m0-world");
-    if (this.isBackup10Scene()) {
+    if (this.isBackup26Scene()) {
+      document.documentElement.dataset.omegaScene = BACKUP_26_SCENE;
+      if (sceneLabel) sceneLabel.textContent = "NEURAL SNAPSHOT // VERA_2_6 // RESEARCH OFFICE";
+      if (canvas) canvas.setAttribute("aria-label", "V.E.R.A. 2.6 Research Office rollback audit");
+      this.updateStatus(false);
+    } else if (this.isBackup10Scene()) {
       document.documentElement.dataset.omegaScene = BACKUP_10_SCENE;
       if (sceneLabel) sceneLabel.textContent = "NEURAL SNAPSHOT // VERA_1_0 // SUMMER HOUSE";
       if (canvas) canvas.setAttribute("aria-label", "V.E.R.A. 1.0 Summer House reconstruction");
@@ -1200,6 +1555,11 @@ export class Game {
   private updateStatus(photoVisible: boolean): void {
     const indicator = document.querySelector<HTMLElement>("[data-binding-status]");
     if (!indicator) return;
+    if (this.isBackup26Scene()) {
+      indicator.dataset.active = "true";
+      indicator.textContent = "SNAPSHOT: VERA_2_6";
+      return;
+    }
     if (this.isBackup10Scene()) {
       indicator.dataset.active = "true";
       indicator.textContent = "SNAPSHOT: VERA_1_0";

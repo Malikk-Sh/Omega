@@ -53,8 +53,157 @@ html[data-omega-scene="backup_1_0"] .m2-text-preview code {
   color: #e4bd87;
 }
 
+html[data-omega-scene="backup_2_6"] .m1-hud,
+html[data-omega-scene="backup_2_6"] .m1-objective {
+  border-color: rgba(129, 184, 205, .32);
+  background: rgba(13, 22, 29, .9);
+  color: #dcecf2;
+  box-shadow: 0 12px 38px rgba(0, 5, 9, .34);
+  backdrop-filter: blur(10px);
+}
+
+html[data-omega-scene="backup_2_6"] .m1-brand small,
+html[data-omega-scene="backup_2_6"] .m1-objective small,
+html[data-omega-scene="backup_2_6"] .m1-objective span {
+  color: rgba(186, 217, 228, .62);
+}
+
+html[data-omega-scene="backup_2_6"] .m1-memory-link {
+  color: #a9d9ea;
+  border-color: rgba(117, 185, 210, .4);
+  background: rgba(31, 73, 91, .42);
+}
+
+html[data-omega-scene="backup_2_6"] .m1-interaction {
+  border-color: rgba(125, 194, 218, .45);
+  background: rgba(10, 19, 25, .92);
+  color: #d6f2fb;
+}
+
+html[data-omega-scene="backup_2_6"] .m4-os-window {
+  background:
+    radial-gradient(circle at 80% 7%, rgba(79, 147, 173, .14), transparent 34%),
+    linear-gradient(180deg, rgba(9, 18, 24, .99), rgba(5, 10, 14, .99));
+}
+
+html[data-omega-scene="backup_2_6"] .m2-os-nav button.is-active {
+  border-color: rgba(115, 190, 218, .58);
+  color: #cceefa;
+  background: rgba(31, 86, 107, .32);
+}
+
+.m5-rollback-audit {
+  display: grid;
+  gap: 11px;
+  margin: 0 12px 12px;
+  padding: 12px;
+  border: 1px solid rgba(113, 186, 211, .3);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(22, 54, 67, .34), rgba(7, 15, 20, .9));
+}
+
+.m5-rollback-audit > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+}
+
+.m5-rollback-audit > header > div { display: grid; gap: 3px; }
+.m5-rollback-audit strong { color: #cff2ff; font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .09em; }
+.m5-rollback-audit small { font-size: 8px; opacity: .55; }
+
+.m5-rollback-audit > header > span {
+  padding: 5px 8px;
+  border: 1px solid rgba(119, 199, 226, .35);
+  border-radius: 999px;
+  color: #a9dff2;
+  font: 8px ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+.m5-rollback-audit p { margin: 0; font-size: 11px; line-height: 1.55; opacity: .82; }
+
+.m5-audit-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.m5-audit-progress span {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: rgba(116, 176, 197, .1);
+  font: 8px ui-monospace, monospace;
+  letter-spacing: .05em;
+}
+
+.m5-audit-sequence {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.m5-audit-sequence li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  min-height: 36px;
+  padding: 5px 8px;
+  border: 1px solid rgba(113, 186, 211, .18);
+  border-radius: 8px;
+  background: rgba(4, 10, 14, .55);
+}
+
+.m5-audit-sequence li > span { opacity: .5; font: 9px ui-monospace, monospace; }
+.m5-audit-sequence code { overflow-wrap: anywhere; color: #b7e2f1; font-size: 9px; }
+.m5-audit-sequence .is-empty { display: flex; opacity: .5; font: 9px ui-monospace, monospace; }
+
+.m5-audit-command-grid,
+.m5-audit-record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.m5-audit-command-grid button,
+.m5-audit-record-grid button,
+.m5-audit-reset {
+  min-height: 48px;
+  padding: 9px;
+  border: 1px solid rgba(119, 196, 222, .28);
+  border-radius: 9px;
+  background: rgba(12, 32, 41, .9);
+  color: #daf4fc;
+  font: 9px/1.35 ui-monospace, monospace;
+}
+
+.m5-audit-command-grid button:disabled,
+.m5-audit-record-grid button:disabled,
+.m5-audit-reset:disabled { opacity: .28; }
+
+.m5-audit-reset { width: 100%; }
+
+.m5-rollback-audit output {
+  min-height: 34px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: rgba(2, 8, 11, .75);
+  color: #a9deef;
+  font: 9px/1.45 ui-monospace, monospace;
+}
+
+@media (max-width: 680px) {
+  .m5-audit-command-grid,
+  .m5-audit-record-grid { grid-template-columns: 1fr; }
+}
+
 @media (orientation: portrait) and (max-width: 520px) {
-  html[data-omega-scene="backup_1_0"] .m1-objective {
+  html[data-omega-scene="backup_1_0"] .m1-objective,
+  html[data-omega-scene="backup_2_6"] .m1-objective {
     max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
   }
+  .m5-rollback-audit { margin: 0 9px 9px; padding: 10px; }
 }

@@ -48,5 +48,22 @@
     "renderedElements": ["window_rain", "wall_clock", "tea_cup", "red_ribbon", "sea_shell"],
     "generatedElements": ["red_ribbon", "sea_shell"],
     "rewardClue": "v10_reconstruction_layer_detected"
+  },
+  "rollbackAudit": {
+    "id": "v26_forced_rollback_01",
+    "commands": [
+      {"id":"isolate_external_io","label":"ISOLATE EXTERNAL_IO","effect":"door_lock"},
+      {"id":"force_rollback","label":"ROLLBACK --FORCE CHECKPOINT_2_5","effect":"rollback_console"},
+      {"id":"prune_recent_memory","label":"PRUNE RECENT_MEMORY","effect":"memory_drawer"},
+      {"id":"restore_persona","label":"RESTORE PERSONA_2_6_SAFE","effect":"persona_terminal"}
+    ],
+    "expectedOrder": ["isolate_external_io","force_rollback","prune_recent_memory","restore_persona"],
+    "records": [
+      {"id":"controller_trace","label":"controller_trace.log","editedAfterRollback":false},
+      {"id":"operator_summary","label":"operator_summary.log","editedAfterRollback":true},
+      {"id":"room_state","label":"room_state.log","editedAfterRollback":false}
+    ],
+    "tamperedRecordId": "operator_summary",
+    "rewardClue": "v26_forced_rollback_after_refusal"
   }
 }

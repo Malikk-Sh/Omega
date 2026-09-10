@@ -5,6 +5,7 @@ import type { WorldTarget } from "../world/WorldBinding.js";
 import {
   BACKUP_03_SCENE,
   BACKUP_10_SCENE,
+  BACKUP_26_SCENE,
   HOME_SCENE,
   SCENE_INTERACTION_IDS,
   normalizeSceneId,
@@ -69,9 +70,7 @@ export class WorldRenderer {
     window.addEventListener("resize", this.resize);
   }
 
-  setInteractionCallbacks(callbacks: InteractionCallbacks): void {
-    this.callbacks = callbacks;
-  }
+  setInteractionCallbacks(callbacks: InteractionCallbacks): void { this.callbacks = callbacks; }
 
   setControlsEnabled(enabled: boolean): void {
     this.controlsEnabled = enabled;
@@ -89,9 +88,7 @@ export class WorldRenderer {
     if (this.anomalyShadow) this.anomalyShadow.visible = true;
   }
 
-  triggerRecoveryPulse(): void {
-    this.anomalyUntil = Math.max(this.anomalyUntil, performance.now() + 1050);
-  }
+  triggerRecoveryPulse(): void { this.anomalyUntil = Math.max(this.anomalyUntil, performance.now() + 1050); }
 
   triggerThresholdPulse(): void {
     this.thresholdPulseUntil = performance.now() + 1900;
@@ -119,6 +116,10 @@ export class WorldRenderer {
       this.scene.background = new THREE.Color(0x39434d);
       this.sceneBounds = { minX: -3.15, maxX: 3.15, minZ: -3.75, maxZ: 3.75 };
       this.buildBackup10();
+    } else if (sceneId === BACKUP_26_SCENE) {
+      this.scene.background = new THREE.Color(0x111820);
+      this.sceneBounds = { minX: -3.2, maxX: 3.2, minZ: -3.55, maxZ: 3.55 };
+      this.buildBackup26();
     } else {
       this.scene.background = new THREE.Color(0x090b12);
       this.sceneBounds = { minX: -3.0, maxX: 3.0, minZ: -4.0, maxZ: 4.0 };
@@ -231,10 +232,7 @@ export class WorldRenderer {
       let object = hit.object;
       while (object && !object.userData?.interactionId) object = object.parent;
       if (!object?.userData?.interactionId || !this.isEffectivelyVisible(object)) continue;
-      next = {
-        id: object.userData.interactionId,
-        label: object.userData.interactionLabel ?? "Взаимодействовать"
-      };
+      next = { id: object.userData.interactionId, label: object.userData.interactionLabel ?? "Взаимодействовать" };
       break;
     }
     this.setFocused(next);
@@ -287,10 +285,7 @@ export class WorldRenderer {
   }
 
   private box(size: [number, number, number], color: number, position: [number, number, number], roughness = 0.9): any {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(...size),
-      new THREE.MeshStandardMaterial({ color, roughness })
-    );
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshStandardMaterial({ color, roughness }));
     mesh.position.set(...position);
     this.worldRoot.add(mesh);
     return mesh;
@@ -516,9 +511,6 @@ export class WorldRenderer {
     this.entities.set("backup03.console", consoleScreen);
     this.registerInteractable(SCENE_INTERACTION_IDS.backup03.console, "Открыть training console", consoleScreen);
     this.buildReturnPortal("backup03.return", SCENE_INTERACTION_IDS.backup03.returnThreshold, [0, 1.16, 3.34], 0x69cbd7);
-    this.box([1.3, 0.04, 0.04], 0x67848a, [0, 2.78, -3.42], 1);
-    this.box([0.04, 0.34, 0.04], 0x67848a, [-0.65, 2.62, -3.42], 1);
-    this.box([0.04, 0.34, 0.04], 0x67848a, [0.65, 2.62, -3.42], 1);
   }
 
   private buildBackup10(): void {
@@ -561,7 +553,6 @@ export class WorldRenderer {
     this.box([0.12, 0.76, 0.12], 0x4b3527, [-0.55, 0.39, -1.05]);
     this.box([0.12, 0.76, 0.12], 0x4b3527, [1.25, 0.39, -1.05]);
     table.userData.decorative = true;
-
     const teaCup = this.box([0.24, 0.25, 0.24], 0xe8dfce, [0.95, 0.98, -1.2], 0.55);
     this.registerInteractable(SCENE_INTERACTION_IDS.backup10.cup, "PHOTO ELEMENT // чайная чашка", teaCup);
     const shell = this.box([0.28, 0.12, 0.2], 0xe7cfaa, [-0.05, 0.93, -1.3], 0.7);
@@ -625,6 +616,104 @@ export class WorldRenderer {
     this.box([1.85, 0.5, 0.85], 0x756151, [2.45, 0.25, 2.2]);
     this.box([1.72, 0.18, 0.76], 0xb9a28d, [2.45, 0.58, 2.2]);
     this.buildReturnPortal("backup10.return", SCENE_INTERACTION_IDS.backup10.returnThreshold, [0, 1.16, 4.02], 0xd6ad76);
+  }
+
+  private buildBackup26(): void {
+    const ambient = new THREE.AmbientLight(0x8fa3b2, 0.9);
+    const ceilingLight = new THREE.DirectionalLight(0xd7edf5, 1.65);
+    ceilingLight.position.set(0, 4, 1);
+    const monitorLight = new THREE.PointLight(0x66b8d4, 4.2, 6, 2);
+    monitorLight.position.set(-1.9, 1.7, -2.6);
+    this.worldRoot.add(ambient, ceilingLight, monitorLight);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 8), new THREE.MeshStandardMaterial({ color: 0x303942, roughness: 0.92 }));
+    floor.rotation.x = -Math.PI / 2;
+    this.worldRoot.add(floor);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x66727c, roughness: 0.96 });
+    const back = new THREE.Mesh(new THREE.BoxGeometry(7.2, 3.5, 0.12), wallMat);
+    back.position.set(0, 1.75, -4);
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.5, 8), wallMat);
+    left.position.set(-3.6, 1.75, 0);
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.5, 8), wallMat);
+    right.position.set(3.6, 1.75, 0);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0x424c55, roughness: 1 }));
+    ceiling.position.set(0, 3.45, 0);
+    this.worldRoot.add(back, left, right, ceiling);
+
+    for (let z = -2.8; z <= 2.2; z += 2.5) {
+      const desk = this.box([2.1, 0.1, 0.72], 0x45515a, [-0.65, 0.78, z]);
+      this.box([0.1, 0.75, 0.1], 0x323b42, [-1.45, 0.39, z]);
+      this.box([0.1, 0.75, 0.1], 0x323b42, [0.15, 0.39, z]);
+      desk.userData.decorative = true;
+    }
+
+    const auditScreen = new THREE.Mesh(
+      new THREE.BoxGeometry(1.1, 0.68, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x162027, emissive: 0x285d72, emissiveIntensity: 1.2, roughness: 0.48 })
+    );
+    auditScreen.position.set(-0.65, 1.25, -3.0);
+    this.worldRoot.add(auditScreen);
+    this.entities.set("backup26.audit.console", auditScreen);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup26.auditConsole, "Открыть rollback audit", auditScreen);
+
+    const door = new THREE.Group();
+    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.2, 1.25), new THREE.MeshStandardMaterial({ color: 0x4d5962, roughness: 0.86 }));
+    const lock = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.25), new THREE.MeshStandardMaterial({ color: 0x172027, emissive: 0xc34747, emissiveIntensity: 1.25, roughness: 0.5 }));
+    lock.position.set(-0.085, 0.15, 0.36);
+    door.add(doorPanel, lock);
+    door.position.set(3.48, 1.15, -1.15);
+    this.worldRoot.add(door);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup26.doorLock, "EVIDENCE // external door lock", door);
+
+    const memoryDrawer = new THREE.Group();
+    const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.2, 0.55), new THREE.MeshStandardMaterial({ color: 0x4d5860, roughness: 0.9 }));
+    cabinet.position.y = 0.6;
+    memoryDrawer.add(cabinet);
+    for (let index = 0; index < 4; index += 1) {
+      const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.18, 0.08), new THREE.MeshStandardMaterial({ color: index < 2 ? 0x283139 : 0x78838b, roughness: 0.8 }));
+      drawer.position.set(0, 0.28 + index * 0.25, index < 2 ? 0.46 : 0.3);
+      memoryDrawer.add(drawer);
+    }
+    memoryDrawer.position.set(2.25, 0, -3.1);
+    this.worldRoot.add(memoryDrawer);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup26.memoryDrawer, "EVIDENCE // memory drawer 184 → 137", memoryDrawer);
+
+    const rollbackStation = new THREE.Group();
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.5, 0.55), new THREE.MeshStandardMaterial({ color: 0x252f36, roughness: 0.78 }));
+    rack.position.y = 0.75;
+    const checkpoint = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.36), new THREE.MeshBasicMaterial({ color: 0x74aebd, side: THREE.DoubleSide }));
+    checkpoint.position.set(0, 1.08, 0.281);
+    rollbackStation.add(rack, checkpoint);
+    rollbackStation.position.set(-2.7, 0, -1.3);
+    this.worldRoot.add(rollbackStation);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup26.rollbackConsole, "EVIDENCE // CHECKPOINT_2_5 applied", rollbackStation);
+
+    const vera26 = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.34), new THREE.MeshStandardMaterial({ color: 0x465766, roughness: 0.72 }));
+    body.position.y = 0.73;
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.5, 0.035), new THREE.MeshStandardMaterial({ color: 0x91a6b5, roughness: 0.72 }));
+    shirt.position.set(0, 0.78, 0.188);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.4), new THREE.MeshStandardMaterial({ color: 0xdabfb8, roughness: 0.82 }));
+    head.position.y = 1.39;
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.51, 0.2, 0.43), new THREE.MeshStandardMaterial({ color: 0x302f36, roughness: 0.88 }));
+    hair.position.set(0, 1.61, -0.01);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x26333b });
+    const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.035, 0.018), eyeMat);
+    leftEye.position.set(-0.1, 1.42, 0.208);
+    const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.035, 0.018), eyeMat);
+    rightEye.position.set(0.1, 1.42, 0.208);
+    vera26.add(body, shirt, head, hair, leftEye, rightEye);
+    vera26.position.set(1.05, 0, 0.2);
+    vera26.rotation.y = -0.22;
+    this.worldRoot.add(vera26);
+    this.entities.set("backup26.vera", vera26);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup26.vera, "Поговорить с V.E.R.A. 2.6", vera26);
+
+    const serverA = this.box([0.58, 2.3, 0.7], 0x202a31, [-3.15, 1.15, 1.9]);
+    const serverB = this.box([0.58, 2.3, 0.7], 0x202a31, [-3.15, 1.15, 2.7]);
+    serverA.userData.decorative = true;
+    serverB.userData.decorative = true;
+    this.buildReturnPortal("backup26.return", SCENE_INTERACTION_IDS.backup26.returnThreshold, [0, 1.16, 3.92], 0x75b9d2);
   }
 
   private buildReturnPortal(entityId: string, interactionId: string, position: [number, number, number], edgeColor: number): void {

@@ -13,6 +13,12 @@ export interface VirtualEntryDefinition {
   content?: string;
   deletable?: boolean;
   restorable?: boolean;
+  inspectable?: boolean;
+  artwork?: string;
+  metadata?: Record<string, string>;
+  initiallyDeleted?: boolean;
+  hiddenWhileDeleted?: boolean;
+  recoveryKey?: string;
 }
 
 export interface FileSystemDefinition {
@@ -34,26 +40,27 @@ export class FileSystemService {
     for (const entry of definition.entries) {
       if (this.definitions.has(entry.path)) throw new Error(`Duplicate virtual path '${entry.path}'.`);
       this.definitions.set(entry.path, entry);
-      if (entry.type === "file" && !this.state.filesystem.entries[entry.path]) {
-        this.state.filesystem.entries[entry.path] = { deleted: false };
-      }
     }
+    this.ensureMutationDefaults(this.state);
   }
 
   replaceState(state: OmegaGameState): void {
     this.state = state;
+    this.ensureMutationDefaults(this.state);
   }
 
   getEntry(path: string): VirtualEntry | null {
     const definition = this.definitions.get(path);
     if (!definition) return null;
-    return { ...definition, deleted: this.state.filesystem.entries[path]?.deleted ?? false };
+    const deleted = this.state.filesystem.entries[path]?.deleted ?? definition.initiallyDeleted ?? false;
+    return { ...definition, deleted };
   }
 
   listDirectory(path: string, includeDeleted = true): VirtualEntry[] {
     return [...this.definitions.values()]
       .filter(entry => entry.parent === path)
       .map(entry => this.getEntry(entry.path)!)
+      .filter(entry => !(entry.hiddenWhileDeleted && entry.deleted))
       .filter(entry => includeDeleted || !entry.deleted);
   }
 
@@ -78,8 +85,29 @@ export class FileSystemService {
     return true;
   }
 
+  recoverByKey(key: string): VirtualEntry | null {
+    const normalized = key.trim().replace(/\s+/g, "").toUpperCase();
+    if (!normalized) return null;
+    for (const definition of this.definitions.values()) {
+      if (!definition.recoveryKey || definition.recoveryKey.toUpperCase() !== normalized) continue;
+      const entry = this.getEntry(definition.path);
+      if (!entry || entry.type !== "file" || !entry.deleted) return null;
+      this.state.filesystem.entries[definition.path] = { deleted: false };
+      this.events.emit("filesystem:changed", { path: definition.path, deleted: false });
+      return this.getEntry(definition.path);
+    }
+    return null;
+  }
+
   exists(path: string): boolean {
     const entry = this.getEntry(path);
     return !!entry && !entry.deleted;
+  }
+
+  private ensureMutationDefaults(state: OmegaGameState): void {
+    for (const definition of this.definitions.values()) {
+      if (definition.type !== "file" || state.filesystem.entries[definition.path]) continue;
+      state.filesystem.entries[definition.path] = { deleted: definition.initiallyDeleted ?? false };
+    }
   }
 }

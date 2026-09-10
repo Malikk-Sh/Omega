@@ -9,7 +9,9 @@
     "test:m1": "node tests/m1/home.test.mjs",
     "test:m2": "node tests/m2/investigation.test.mjs",
     "test:m3": "node tests/m3/threshold.test.mjs",
-    "check:m3": "npm run build"
+    "check:m3": "npm run build",
+    "ai:sync": "node scripts/update-ai-context.mjs",
+    "ai:check": "node scripts/update-ai-context.mjs --check"
   },
   "dependencies": {
     "three": "0.186.0"

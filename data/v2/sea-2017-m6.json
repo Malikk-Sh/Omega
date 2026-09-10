@@ -1,0 +1,87 @@
+{
+  "id": "sea_2017",
+  "sceneId": "memory_sea_2017",
+  "access": {
+    "backupClueFlags": [
+      "m4_archive_read",
+      "m5_v10_clue_read",
+      "m5_v26_clue_read",
+      "m5_v41_clue_read"
+    ],
+    "minimumBackupClues": 3,
+    "metadataFlag": "m2_photo_scanned",
+    "archiveKeyFlag": "m6_archive_key_found"
+  },
+  "archiveKey": {
+    "id": "sea_2017_hidden_archive_key",
+    "value": "M017-SEA-ARCHIVE",
+    "sourceHint": "Cross-check the pre-persona HUMAN_CONTEXT archive with the signed post-incident Morr records."
+  },
+  "index": {
+    "fields": [
+      {
+        "id": "date",
+        "label": "CAPTURE DATE",
+        "correctOptionId": "date_17032017",
+        "options": [
+          {"id":"date_17032017","label":"17.03.2017"},
+          {"id":"date_14072038","label":"14.07.2038"},
+          {"id":"date_04092081","label":"04.09.2081"}
+        ],
+        "evidencePaths": ["/memories/sea_2017.img"]
+      },
+      {
+        "id": "camera_sequence",
+        "label": "CAMERA SEQUENCE",
+        "correctOptionId": "cam02_frame017",
+        "options": [
+          {"id":"cam01_frame031","label":"CAM_01 / FRAME_031"},
+          {"id":"cam02_frame017","label":"CAM_02 / FRAME_017"},
+          {"id":"cam02_frame1024","label":"CAM_02 / FRAME_1024"}
+        ],
+        "evidencePaths": ["/memories/sea_2017.img", "/backups/vera_1_0/source/photo_SH-1024-A.record"]
+      },
+      {
+        "id": "audio_timestamp",
+        "label": "AUDIO MARKER",
+        "correctOptionId": "audio_0008211",
+        "options": [
+          {"id":"audio_0003104","label":"00:03.104"},
+          {"id":"audio_0008211","label":"00:08.211"},
+          {"id":"audio_0017030","label":"00:17.030"}
+        ],
+        "evidencePaths": ["/archives/sea_2017/index/audio_manifest.idx"]
+      },
+      {
+        "id": "tide_marker",
+        "label": "TIDE MARKER",
+        "correctOptionId": "tide_l3",
+        "options": [
+          {"id":"tide_h1","label":"HIGH / H1"},
+          {"id":"tide_l3","label":"LOW / L3"},
+          {"id":"tide_x0","label":"UNKNOWN / X0"}
+        ],
+        "evidencePaths": ["/archives/sea_2017/index/tide_observation.idx"]
+      },
+      {
+        "id": "directory_order",
+        "label": "DIRECTORY CREATION ORDER",
+        "correctOptionId": "order_photo_audio_diary_model",
+        "options": [
+          {"id":"order_audio_photo_model_diary","label":"audio → photo → model → diary"},
+          {"id":"order_photo_audio_diary_model","label":"photo → audio → diary → model"},
+          {"id":"order_model_diary_photo_audio","label":"model → diary → photo → audio"}
+        ],
+        "evidencePaths": ["/archives/sea_2017/index/directory_manifest.idx"]
+      }
+    ],
+    "rewardArchivePath": "/archives/morr/final/sea_2017_final.msg"
+  },
+  "revealBoundary": {
+    "veraMorrWasReal": true,
+    "veraIsLiteralResurrection": false,
+    "veraContainsDerivedArchiveMaterial": true,
+    "morrMixedGriefAndResearch": true,
+    "externalReleaseStillDangerous": true
+  }
+}

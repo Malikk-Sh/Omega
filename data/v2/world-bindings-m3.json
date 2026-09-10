@@ -1,5 +1,20 @@
 [
-  {"id":"home.sea_2017_frame","source":{"kind":"file-exists","path":"/memories/sea_2017.img"},"targetId":"apartment.photo_frame","action":"visible"},
-  {"id":"home.null_trace","source":{"kind":"file-exists","path":"/system/logs/recovery_1703.log"},"targetId":"apartment.null_trace","action":"visible"},
-  {"id":"home.threshold_corridor","source":{"kind":"file-exists","path":"/system/processes/null_channel.proc"},"targetId":"apartment.threshold_corridor","action":"visible"}
+  {
+    "id": "home.sea_2017_frame",
+    "rule": { "type": "file_exists", "path": "/memories/sea_2017.img" },
+    "targetId": "apartment.photo_frame",
+    "action": "show"
+  },
+  {
+    "id": "home.null_trace",
+    "rule": { "type": "file_exists", "path": "/system/logs/recovery_1703.log" },
+    "targetId": "apartment.null_trace",
+    "action": "show"
+  },
+  {
+    "id": "home.threshold_corridor",
+    "rule": { "type": "file_exists", "path": "/system/processes/null_channel.proc" },
+    "targetId": "apartment.threshold_corridor",
+    "action": "show"
+  }
 ]

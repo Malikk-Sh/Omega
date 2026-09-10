@@ -45,7 +45,7 @@ jobs:
       - name: Commit generated context if changed
         shell: bash
         run: |
-          if git diff --quiet -- ai-context; then
+          if [ -z "$(git status --porcelain -- ai-context)" ]; then
             echo "AI context already up to date."
             exit 0
           fi

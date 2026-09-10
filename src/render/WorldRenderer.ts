@@ -8,6 +8,7 @@ import {
   BACKUP_26_SCENE,
   BACKUP_41_SCENE,
   HOME_SCENE,
+  SEA_2017_SCENE,
   SCENE_INTERACTION_IDS,
   normalizeSceneId,
   type OmegaSceneId
@@ -54,6 +55,7 @@ export class WorldRenderer {
   private nullTraceMaterial: any = null;
   private thresholdCorridor: any = null;
   private readonly thresholdMaterials: any[] = [];
+  private readonly seaWaveBands: any[] = [];
   private sceneBounds: SceneBounds = { minX: -3, maxX: 3, minZ: -4, maxZ: 4 };
 
   constructor(
@@ -125,6 +127,10 @@ export class WorldRenderer {
       this.scene.background = new THREE.Color(0x05070b);
       this.sceneBounds = { minX: -3.2, maxX: 3.2, minZ: -3.6, maxZ: 3.6 };
       this.buildBackup41();
+    } else if (sceneId === SEA_2017_SCENE) {
+      this.scene.background = new THREE.Color(0xb88970);
+      this.sceneBounds = { minX: -5.4, maxX: 5.4, minZ: -6.2, maxZ: 5.4 };
+      this.buildSea2017();
     } else {
       this.scene.background = new THREE.Color(0x090b12);
       this.sceneBounds = { minX: -3.0, maxX: 3.0, minZ: -4.0, maxZ: 4.0 };
@@ -174,6 +180,7 @@ export class WorldRenderer {
     this.entities.clear();
     this.interactables.length = 0;
     this.thresholdMaterials.length = 0;
+    this.seaWaveBands.length = 0;
     this.anomalyShadow = null;
     this.warmLight = null;
     this.nullTrace = null;
@@ -221,6 +228,7 @@ export class WorldRenderer {
     this.updateAnomaly(time);
     this.updateNullTrace(time);
     this.updateThreshold(time);
+    this.updateSea2017(time);
   }
 
   private updateInteractionFocus(): void {
@@ -280,6 +288,17 @@ export class WorldRenderer {
     const pulseBoost = time < this.thresholdPulseUntil ? 0.32 : 0;
     this.thresholdMaterials.forEach((material, index) => {
       material.opacity = 0.22 + pulseBoost + (Math.sin(time * 0.0045 + index * 0.8) + 1) * 0.11;
+    });
+  }
+
+  private updateSea2017(time: number): void {
+    if (!this.seaWaveBands.length) return;
+    const phase = (time * 0.00022) % 1;
+    this.seaWaveBands.forEach((band, index) => {
+      const baseZ = Number(band.userData.baseZ ?? -4);
+      band.position.z = baseZ + ((phase + index * 0.17) % 1) * 0.62;
+      const material = band.material;
+      if (material) material.opacity = 0.2 + (Math.sin(time * 0.0025 + index) + 1) * 0.09;
     });
   }
 
@@ -828,6 +847,125 @@ export class WorldRenderer {
     this.box([0.12, 0.45, 0.18], 0xd44352, [-1.0, 2.72, -3.86], 0.5);
     this.box([0.12, 0.45, 0.18], 0xd44352, [1.0, 2.72, -3.86], 0.5);
     this.buildReturnPortal("backup41.return", SCENE_INTERACTION_IDS.backup41.returnThreshold, [0, 1.16, 3.94], 0xd54b59);
+  }
+
+  private buildSea2017(): void {
+    const ambient = new THREE.AmbientLight(0xe5c4a4, 1.55);
+    const lateSun = new THREE.DirectionalLight(0xffc58a, 2.25);
+    lateSun.position.set(-4.5, 5.5, 2.8);
+    const seaSpill = new THREE.DirectionalLight(0x88a7b8, 0.8);
+    seaSpill.position.set(4, 2.5, -5);
+    this.worldRoot.add(ambient, lateSun, seaSpill);
+
+    const sand = new THREE.Mesh(new THREE.PlaneGeometry(12, 13), new THREE.MeshStandardMaterial({ color: 0xc39b73, roughness: 1 }));
+    sand.rotation.x = -Math.PI / 2;
+    sand.position.z = 0.2;
+    this.worldRoot.add(sand);
+
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(12, 7.4), new THREE.MeshStandardMaterial({ color: 0x607f89, roughness: 0.7, metalness: 0.04 }));
+    sea.rotation.x = -Math.PI / 2;
+    sea.position.set(0, 0.035, -6.25);
+    this.worldRoot.add(sea);
+
+    const waveGroup = new THREE.Group();
+    for (let index = 0; index < 6; index += 1) {
+      const band = new THREE.Mesh(
+        new THREE.PlaneGeometry(8.8 - index * 0.35, 0.08),
+        new THREE.MeshBasicMaterial({ color: 0xe4ddd0, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+      );
+      band.rotation.x = -Math.PI / 2;
+      band.position.set((index % 2 ? 0.16 : -0.12), 0.055, -3.35 - index * 0.42);
+      band.userData.baseZ = band.position.z;
+      waveGroup.add(band);
+      this.seaWaveBands.push(band);
+    }
+    this.worldRoot.add(waveGroup);
+    this.registerInteractable(SCENE_INTERACTION_IDS.sea2017.loopingWave, 'MEMORY INDEX // looping wave crest', waveGroup);
+
+    const marker = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.05, 0.1), new THREE.MeshStandardMaterial({ color: 0x4e4036, roughness: 0.95 }));
+    post.position.y = 0.52;
+    const tag = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.05), new THREE.MeshBasicMaterial({ color: 0xbec7bf }));
+    tag.position.set(0, 0.76, 0.07);
+    marker.add(post, tag);
+    marker.position.set(-3.2, 0, -2.85);
+    this.worldRoot.add(marker);
+    this.entities.set('sea2017.tide.l3', marker);
+
+    const wrongShadow = new THREE.Group();
+    const driftwood = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.18), new THREE.MeshStandardMaterial({ color: 0x6e503a, roughness: 1 }));
+    driftwood.position.y = 0.12;
+    driftwood.rotation.y = -0.32;
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.15, 0.38), new THREE.MeshBasicMaterial({ color: 0x342b30, transparent: true, opacity: 0.48, side: THREE.DoubleSide }));
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.rotation.z = 0.82;
+    shadow.position.set(0.72, 0.015, 0.52);
+    wrongShadow.add(driftwood, shadow);
+    wrongShadow.position.set(2.75, 0, -0.65);
+    this.worldRoot.add(wrongShadow);
+    this.registerInteractable(SCENE_INTERACTION_IDS.sea2017.wrongShadow, 'MEMORY ERROR // shadow contradicts sun', wrongShadow);
+
+    const figures = new THREE.Group();
+    for (const x of [-1.05, 0.15, 1.2]) {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.2, 0.22), new THREE.MeshStandardMaterial({ color: 0x565253, roughness: 1 }));
+      body.position.set(x, 0.62, 0);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 6), new THREE.MeshStandardMaterial({ color: 0xb89c86, roughness: 1 }));
+      head.position.set(x, 1.38, 0);
+      figures.add(body, head);
+    }
+    figures.position.set(-0.8, 0, -5.35);
+    figures.scale.setScalar(0.72);
+    this.worldRoot.add(figures);
+    this.registerInteractable(SCENE_INTERACTION_IDS.sea2017.facelessFigures, 'MEMORY ERROR // faceless distant figures', figures);
+
+    const footprints = new THREE.Group();
+    for (let index = 0; index < 7; index += 1) {
+      if (index === 4) continue;
+      const print = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.34), new THREE.MeshBasicMaterial({ color: 0x806852, transparent: true, opacity: 0.52, side: THREE.DoubleSide }));
+      print.rotation.x = -Math.PI / 2;
+      print.rotation.z = index % 2 ? 0.12 : -0.08;
+      print.position.set((index % 2 ? 0.2 : -0.18), 0.018, index * -0.46);
+      footprints.add(print);
+    }
+    footprints.position.set(1.05, 0, 2.05);
+    this.worldRoot.add(footprints);
+    this.registerInteractable(SCENE_INTERACTION_IDS.sea2017.footprints, 'MEMORY ERROR // incomplete footprints', footprints);
+
+    const indexConsole = new THREE.Group();
+    const pedestal = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.82, 0.62), new THREE.MeshStandardMaterial({ color: 0x5d5650, roughness: 0.88 }));
+    pedestal.position.y = 0.41;
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.55, 0.07), new THREE.MeshStandardMaterial({ color: 0x263a42, emissive: 0x426e78, emissiveIntensity: 0.85, roughness: 0.45 }));
+    glass.position.set(0, 1.0, -0.24);
+    indexConsole.add(pedestal, glass);
+    indexConsole.position.set(-2.6, 0, 1.25);
+    this.worldRoot.add(indexConsole);
+    this.entities.set('sea2017.index.console', indexConsole);
+    this.registerInteractable(SCENE_INTERACTION_IDS.sea2017.indexConsole, 'Открыть SEA_2017 cross-media index', indexConsole);
+
+    const vera = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.88, 0.33), new THREE.MeshStandardMaterial({ color: 0x8c6672, roughness: 0.86 }));
+    body.position.y = 0.72;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.44, 0.39), new THREE.MeshStandardMaterial({ color: 0xddbfb1, roughness: 0.88 }));
+    head.position.y = 1.38;
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.19, 0.42), new THREE.MeshStandardMaterial({ color: 0x40363a, roughness: 0.94 }));
+    hair.position.set(0, 1.59, -0.01);
+    vera.add(body, head, hair);
+    vera.position.set(2.0, 0, 2.15);
+    vera.rotation.y = -0.5;
+    this.worldRoot.add(vera);
+    this.entities.set('sea2017.vera', vera);
+    this.registerInteractable(SCENE_INTERACTION_IDS.sea2017.vera, 'Поговорить с V.E.R.A. у моря', vera);
+
+    const compression = new THREE.Group();
+    for (let index = 0; index < 5; index += 1) {
+      const block = new THREE.Mesh(new THREE.BoxGeometry(0.65 + index * 0.11, 0.06, 0.04), new THREE.MeshBasicMaterial({ color: index % 2 ? 0xd2b19a : 0x788f94, transparent: true, opacity: 0.52 }));
+      block.position.set(0.12 * index, 1.65 + index * 0.13, 0);
+      compression.add(block);
+    }
+    compression.position.set(4.25, 0, -2.5);
+    this.worldRoot.add(compression);
+
+    this.buildReturnPortal('sea2017.return', SCENE_INTERACTION_IDS.sea2017.returnThreshold, [0, 1.16, 5.72], 0xd7b08a);
   }
 
   private buildReturnPortal(entityId: string, interactionId: string, position: [number, number, number], edgeColor: number): void {

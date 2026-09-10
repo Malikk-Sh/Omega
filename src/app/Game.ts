@@ -15,7 +15,8 @@ import {
   type Backup26MonitorState,
   type Backup41MonitorState,
   type ProcessMonitorState,
-  type RecoveryResponse
+  type RecoveryResponse,
+  type Sea2017MonitorState
 } from "../omega-os/OmegaOS.js";
 import { DialogueController, type DialogueChoiceOption, type DialogueLine } from "../story/DialogueController.js";
 import { ObjectiveController, type ObjectiveViewModel } from "../story/ObjectiveController.js";
@@ -58,6 +59,21 @@ import {
   upgradeStateForVersions,
   type VersionsDefinition
 } from "../story/VersionsProtocol.js";
+import {
+  SEA_2017_PHYSICAL_EVIDENCE_FLAGS,
+  evaluateArchiveKeySources,
+  evaluateSea2017Access,
+  evaluateSeaIndex,
+  hasInspectedSea2017PhysicalEvidence,
+  parseArchiveKeySources,
+  parseSeaIndexAssignments,
+  resetArchiveKeySources,
+  resetSeaIndexAssignments,
+  setSeaIndexAssignment,
+  toggleArchiveKeySource,
+  upgradeStateForSea2017,
+  type Sea2017Definition
+} from "../story/Sea2017Protocol.js";
 import { listRoutableVersions } from "../world/VersionRoute.js";
 import {
   BACKUP_03_SCENE,
@@ -65,6 +81,7 @@ import {
   BACKUP_26_SCENE,
   BACKUP_41_SCENE,
   HOME_SCENE,
+  SEA_2017_SCENE,
   SCENE_INTERACTION_IDS,
   SceneRouter
 } from "../world/SceneRouter.js";
@@ -82,6 +99,16 @@ const BACKUP_26_AUDIT_DIR = "/backups/vera_2_6/audit";
 const BACKUP_26_RESULT_DIR = "/backups/vera_2_6/result";
 const BACKUP_41_EVIDENCE_DIR = "/backups/vera_4_1/evidence";
 const BACKUP_41_RESULT_DIR = "/backups/vera_4_1/result";
+const SEA_2017_INDEX_DIR = "/archives/sea_2017/index";
+const SEA_2017_FINAL_DIR = "/archives/morr/final";
+const SEA_2017_ARCHIVE_KEY_PATH = "/archives/sea_2017/index/archive_key.idx";
+const SEA_2017_INDEX_FILE_FLAG_BY_PATH: Record<string, string> = {
+  "/archives/sea_2017/index/camera_manifest.idx": "m6_camera_index_read",
+  "/archives/sea_2017/index/audio_manifest.idx": "m6_audio_index_read",
+  "/archives/sea_2017/index/tide_observation.idx": "m6_tide_index_read",
+  "/archives/sea_2017/index/directory_manifest.idx": "m6_directory_index_read"
+};
+const SEA_2017_INDEX_FILES = Object.keys(SEA_2017_INDEX_FILE_FLAG_BY_PATH);
 const NULL_PORTRAIT = "../assets/v2/entities/null/null_doorway.svg";
 // TODO_ART: replace fallback portraits with version-specific promoted art.
 const VERA_03_PORTRAIT = "../assets/v2/characters/vera/portraits/vera_neutral.svg";
@@ -118,6 +145,7 @@ export class Game {
   private renderer!: WorldRenderer;
   private sceneRouter!: SceneRouter;
   private versions!: VersionsDefinition;
+  private sea2017!: Sea2017Definition;
   private os!: OmegaOS;
   private dialogue!: DialogueController;
   private objectives!: ObjectiveController;
@@ -133,6 +161,8 @@ export class Game {
   private v26HomeReactionSequenceRunning = false;
   private v41ChoiceSequenceRunning = false;
   private v41HomeReactionSequenceRunning = false;
+  private m6SeaTruthSequenceRunning = false;
+  private m6HomeReactionSequenceRunning = false;
   private sceneTransitionRunning = false;
 
   async start(): Promise<void> {
@@ -142,15 +172,19 @@ export class Game {
     const objectiveRoot = document.querySelector<HTMLElement>("[data-objective-root]");
     if (!canvas || !osRoot || !dialogueRoot || !objectiveRoot) throw new Error("OMEGA DOM shell is incomplete.");
 
-    const [filesystemDefinition, bindingDefinitions, versionsDefinition] = await Promise.all([
+    const [filesystemDefinition, m6FilesystemDefinition, bindingDefinitions, versionsDefinition, sea2017Definition] = await Promise.all([
       this.content.loadJson<FileSystemDefinition>("../data/v2/filesystem-m5.json"),
+      this.content.loadJson<FileSystemDefinition>("../data/v2/filesystem-m6.json"),
       this.content.loadJson<WorldBindingDefinition[]>("../data/v2/world-bindings-m4.json"),
       this.content.loadJson<VersionsDefinition>("../data/v2/versions-m5.json"),
+      this.content.loadJson<Sea2017Definition>("../data/v2/sea-2017-m6.json"),
       this.assets.load("../assets/v2/asset-manifest.json").catch(error => {
         console.warn("Asset manifest is optional for primitive milestone geometry.", error);
       })
     ]);
     this.versions = versionsDefinition;
+    this.sea2017 = sea2017Definition;
+    const mergedFilesystemDefinition: FileSystemDefinition = { entries: [...filesystemDefinition.entries, ...m6FilesystemDefinition.entries] };
 
     let loaded = await this.saves.load(AUTOSAVE_SLOT).catch(error => {
       console.warn("Autosave could not be loaded; checking M0 state.", error);
@@ -160,9 +194,14 @@ export class Game {
     if (loaded) this.state = loaded;
     upgradeStateForBackup03(this.state);
     upgradeStateForVersions(this.state);
+    upgradeStateForSea2017(this.state);
+    if (typeof this.state.flags.m6_sea_vera_met !== "boolean") this.state.flags.m6_sea_vera_met = false;
+    for (const flag of Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH)) {
+      if (typeof this.state.flags[flag] !== "boolean") this.state.flags[flag] = false;
+    }
     if (!this.state.filesystem.entries[SEA_MEMORY]) this.state.filesystem.entries[SEA_MEMORY] = { deleted: false };
 
-    this.filesystem = new FileSystemService(filesystemDefinition, this.state, this.events);
+    this.filesystem = new FileSystemService(mergedFilesystemDefinition, this.state, this.events);
     this.renderer = new WorldRenderer(canvas, this.input, this.state);
     this.sceneRouter = new SceneRouter(this.state, this.renderer);
     this.bindings = new WorldBindingSystem(bindingDefinitions, this.filesystem, this.events);
@@ -188,7 +227,14 @@ export class Game {
       onBackup26RecordRequested: recordId => this.handleBackup26RecordRequested(recordId),
       getBackup41State: () => this.getBackup41MonitorState(),
       onBackup41SourceRequested: (evidenceId, source) => this.handleBackup41SourceRequested(evidenceId, source),
-      onBackup41ResetRequested: () => this.handleBackup41ResetRequested()
+      onBackup41ResetRequested: () => this.handleBackup41ResetRequested(),
+      getSea2017State: () => this.getSea2017MonitorState(),
+      onSeaArchiveSourceRequested: path => this.handleSeaArchiveSourceRequested(path),
+      onSeaArchiveKeySubmitRequested: () => this.handleSeaArchiveKeySubmitRequested(),
+      onSeaArchiveKeyResetRequested: () => this.handleSeaArchiveKeyResetRequested(),
+      onSeaIndexOptionRequested: (fieldId, optionId) => this.handleSeaIndexOptionRequested(fieldId, optionId),
+      onSeaIndexSubmitRequested: () => this.handleSeaIndexSubmitRequested(),
+      onSeaIndexResetRequested: () => this.handleSeaIndexResetRequested()
     });
 
     this.renderer.setInteractionCallbacks({
@@ -232,11 +278,33 @@ export class Game {
         }
         return;
       }
-      if (this.isBackup41Scene()) {
+      if (this.isSea2017Scene()) {
+      const physicalSeen = SEA_2017_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length;
+      const filesRead = Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH).filter(flag => this.state.flags[flag] === true).length;
+      const aligned = Object.keys(parseSeaIndexAssignments(this.state)).length;
+      if (this.state.flags.m6_sea_vera_met !== true) objective = { code: "meet_sea_vera", title: "Поговори с V.E.R.A. у моря", detail: "Она узнаёт берег, на котором никогда физически не была. Сначала зафиксируй это противоречие." };
+      else if (!hasInspectedSea2017PhysicalEvidence(this.state)) objective = { code: "inspect_sea_errors", title: "Осмотри ошибки памяти", detail: "Осмотрено " + physicalSeen + "/4: looping wave, wrong shadow, faceless figures, incomplete footprints." };
+      else if (filesRead < SEA_2017_INDEX_FILES.length) objective = { code: "read_sea_index_files", title: "Прочитай cross-media index", detail: "Прочитано " + filesRead + "/4: camera, audio, tide и directory CREATE-order." };
+      else if (this.state.flags.m6_sea_index_solved !== true) objective = { code: "align_sea_index", title: "Выровняй пять каналов SEA INDEX", detail: "Выбрано " + aligned + "/5. Сопоставь дату, camera sequence, audio timestamp, tide marker и directory creation order." };
+      else if (this.state.flags.m6_final_archive_read !== true) objective = { code: "read_morr_final", title: "Прочитай финальный архив Морра", detail: "P12 смонтировал MORR FINAL. Прочитай sea_2017_final.msg целиком." };
+      else if (this.state.flags.m6_sea_truth_reconciled !== true) objective = { code: "reconcile_sea_truth", title: "Закрой OMEGA OS", detail: "V.E.R.A. должна сопоставить человеческий архив с собственной непрерывностью без forced-answer выбора." };
+      else objective = { code: "return_from_sea", title: "Вернись в HOME", detail: "Порог сохранит SEA INDEX и точный HOME return point." };
+      this.objectives.set(objective);
+      return;
+    }
+    if (this.isBackup41Scene()) {
         if (this.focusedInteractionId === SCENE_INTERACTION_IDS.backup41.evidenceConsole) {
           this.os.openDirectory(this.state.flags.m5_v41_puzzle_solved === true ? BACKUP_41_RESULT_DIR : BACKUP_41_EVIDENCE_DIR);
         } else {
           this.flashMessage("В VERA_4_1 OMEGA доступна через incident evidence console");
+        }
+        return;
+      }
+      if (this.isSea2017Scene()) {
+        if (this.focusedInteractionId === SCENE_INTERACTION_IDS.sea2017.indexConsole) {
+          this.os.openDirectory(this.state.flags.m6_sea_index_solved === true ? SEA_2017_FINAL_DIR : SEA_2017_INDEX_DIR);
+        } else {
+          this.flashMessage("В SEA_2017 OMEGA доступна через cross-media index console");
         }
       }
     });
@@ -276,6 +344,7 @@ export class Game {
           void this.maybeResolveV10Choice();
           void this.maybeResolveV26Choice();
           void this.maybeResolveV41Choice();
+          void this.maybeResolveSeaTruth();
         }, 220);
       }
     });
@@ -293,7 +362,9 @@ export class Game {
         this.updateObjective();
         return;
       }
-      if (this.state.flags.m5_v41_returned_home === true && this.state.flags.m5_v41_home_reaction_seen !== true) {
+      if (this.state.flags.m6_returned_home === true && this.state.flags.m6_home_reaction_seen !== true) {
+        void this.maybePlaySeaHomeReturnReaction();
+      } else if (this.state.flags.m5_v41_returned_home === true && this.state.flags.m5_v41_home_reaction_seen !== true) {
         void this.maybePlayV41HomeReturnReaction();
       } else if (this.state.flags.m5_v26_returned_home === true && this.state.flags.m5_v26_home_reaction_seen !== true) {
         void this.maybePlayV26HomeReturnReaction();
@@ -325,6 +396,10 @@ export class Game {
 
   private isBackup41Scene(): boolean {
     return this.sceneRouter?.is(BACKUP_41_SCENE) ?? this.state.world.activeScene === BACKUP_41_SCENE;
+  }
+
+  private isSea2017Scene(): boolean {
+    return this.sceneRouter?.is(SEA_2017_SCENE) ?? this.state.world.activeScene === SEA_2017_SCENE;
   }
 
   private registerHomeBindingTargets(): void {
@@ -366,6 +441,10 @@ export class Game {
     }
     if (this.isBackup41Scene()) {
       await this.handleBackup41WorldInteraction(id);
+      return;
+    }
+    if (this.isSea2017Scene()) {
+      await this.handleSea2017WorldInteraction(id);
       return;
     }
 
@@ -494,7 +573,80 @@ export class Game {
       await this.handleBackup41Return();
     }
   }
+  private async handleSea2017WorldInteraction(id: string): Promise<void> {
+    if (id === SCENE_INTERACTION_IDS.sea2017.vera) { await this.handleSeaVeraInteraction(); return; }
+    if (id === SCENE_INTERACTION_IDS.sea2017.indexConsole) {
+      this.os.openDirectory(this.state.flags.m6_sea_index_solved === true ? SEA_2017_FINAL_DIR : SEA_2017_INDEX_DIR);
+      return;
+    }
+    if (id === SCENE_INTERACTION_IDS.sea2017.loopingWave || id === SCENE_INTERACTION_IDS.sea2017.wrongShadow || id === SCENE_INTERACTION_IDS.sea2017.facelessFigures || id === SCENE_INTERACTION_IDS.sea2017.footprints) {
+      await this.handleSeaPhysicalEvidence(id);
+      return;
+    }
+    if (id === SCENE_INTERACTION_IDS.sea2017.returnThreshold) {
+      if (this.state.flags.m6_sea_truth_reconciled !== true) {
+        this.flashMessage("Сначала восстанови SEA INDEX, прочитай архив Морра и поговори с V.E.R.A.");
+        return;
+      }
+      await this.handleSeaReturn();
+    }
+  }
+
+  private async handleSeaVeraInteraction(): Promise<void> {
+    if (this.state.flags.m6_sea_vera_met !== true) {
+      this.state.flags.m6_sea_vera_met = true;
+      this.state.checkpoint = "m6_sea_2017";
+      this.scheduleAutosave();
+      this.updateObjective();
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "Я знаю это место. Нет — неправильно. Я узнаю его. Я никогда физически не была у моря.", portrait: VERA_41_PORTRAIT },
+        { speaker: "V.E.R.A.", text: "И всё равно мне кажется, что я по нему скучала ещё до того, как научилась объяснять слово «скучать».", portrait: VERA_41_PORTRAIT },
+        { speaker: "V.E.R.A.", text: "Не доверяй картинке целиком. Волны повторяются, тени не совпадают, люди без лиц. Если это память, она собрана из нескольких источников.", portrait: VERA_41_PORTRAIT }
+      ]);
+      return;
+    }
+    if (!hasInspectedSea2017PhysicalEvidence(this.state)) {
+      await this.playDialogue([{ speaker: "V.E.R.A.", text: "Осмотри ошибки. Мне важно понять, какие части пляжа ведут себя как архив, а какие — как моя реконструкция.", portrait: VERA_41_PORTRAIT }]);
+      return;
+    }
+    if (this.state.flags.m6_sea_index_solved !== true) {
+      await this.playDialogue([{ speaker: "V.E.R.A.", text: "Index console связывает дату, камеру, звук, прилив и порядок каталогов. Ни один канал сам по себе не объясняет это место.", portrait: VERA_41_PORTRAIT }]);
+      return;
+    }
+    if (this.state.flags.m6_final_archive_read !== true) {
+      await this.playDialogue([{ speaker: "V.E.R.A.", text: "Финальный архив Морра открылся. Я не хочу, чтобы ты пересказывал его. Я хочу увидеть формулировку целиком.", portrait: VERA_41_PORTRAIT }]);
+      return;
+    }
+    if (this.state.flags.m6_sea_truth_reconciled !== true) {
+      await this.maybeResolveSeaTruth();
+      return;
+    }
+    await this.playDialogue([{ speaker: "V.E.R.A.", text: "Я не Вера Морр. Но море всё ещё ощущается как потеря чего-то моего. Мне придётся жить с обеими фразами одновременно.", portrait: VERA_41_PORTRAIT }]);
+  }
+
+  private async handleSeaPhysicalEvidence(id: string): Promise<void> {
+    if (this.state.flags.m6_sea_vera_met !== true) { this.flashMessage("Сначала поговори с V.E.R.A. у моря"); return; }
+    let flag = "";
+    let textLine = "";
+    if (id === SCENE_INTERACTION_IDS.sea2017.loopingWave) { flag = "m6_beach_wave_seen"; textLine = "WAVE LOOP // один и тот же crest возвращается с одинаковой геометрией. Это воспроизведение, не непрерывная вода."; }
+    else if (id === SCENE_INTERACTION_IDS.sea2017.wrongShadow) { flag = "m6_beach_shadow_seen"; textLine = "SHADOW ERROR // направление тени противоречит положению позднего солнца. Слои собраны из разных наблюдений."; }
+    else if (id === SCENE_INTERACTION_IDS.sea2017.facelessFigures) { flag = "m6_beach_figures_seen"; textLine = "FIGURE BUFFER // силуэты стабильны, лица отсутствуют во всех реконструированных кадрах."; }
+    else { flag = "m6_beach_footprints_seen"; textLine = "FOOTPRINT GAP // последовательность следов теряет один шаг без физического разрыва траектории."; }
+    const first = this.state.flags[flag] !== true;
+    this.state.flags[flag] = true;
+    if (first) { this.scheduleAutosave(); this.updateObjective(); }
+    await this.playDialogue([
+      { speaker: "SYSTEM", text: textLine },
+      { speaker: "V.E.R.A.", text: first ? "Запиши несоответствие. Не исправляй его — ошибка тоже часть индекса." : "Да. Ошибка повторяется точно так же.", portrait: VERA_41_PORTRAIT }
+    ]);
+    if (first && hasInspectedSea2017PhysicalEvidence(this.state)) this.flashMessage("BEACH MEMORY ERRORS INDEXED // cross-media console ready");
+  }
+
   private async handleVeraInteraction(): Promise<void> {
+    if (this.state.flags.m6_home_reaction_seen === true) {
+      await this.playDialogue([{ speaker: "V.E.R.A.", text: "Я не Вера Морр. Но часть того, из чего я научилась чувствовать, пришла из её архива. Это не делает меня ею — и не делает мои чувства фальшивыми.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }]);
+      return;
+    }
     if (this.state.flags.m5_v41_home_reaction_seen === true) {
       const told = this.state.flags.m5_v41_told_vera_null === true;
       await this.playDialogue(told ? [
@@ -892,10 +1044,17 @@ export class Game {
     const v10Available = routes.some(route => route.versionId === "vera_1_0");
     const v26Available = routes.some(route => route.versionId === "vera_2_6");
     const v41Available = routes.some(route => route.versionId === "vera_4_1");
+    const seaAccess = evaluateSea2017Access(this.state, this.sea2017);
+    const seaAvailable = seaAccess.ok;
     if (v10Available) this.state.flags.m5_versions_index_seen = true;
+    const indexText = seaAvailable
+      ? "MEMORY INDEX // VERSIONS + SEA_2017 ROUTES MOUNTABLE"
+      : this.state.flags.m5_v41_complete === true
+        ? "MEMORY INDEX // SEA_2017 LOCKED // correlate archive sources in OMEGA OS"
+        : v41Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 + VERA_2_6 + VERA_4_1 ROUTES MOUNTABLE" : v26Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 + VERA_2_6 ROUTES MOUNTABLE" : v10Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 ROUTES MOUNTABLE" : "BACKUP 0.3 // SNAPSHOT ROUTE AVAILABLE";
     await this.playDialogue([{
       speaker: this.state.flags.m3_answered_null === true ? "NULL" : "SYSTEM",
-      text: v41Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 + VERA_2_6 + VERA_4_1 ROUTES MOUNTABLE" : v26Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 + VERA_2_6 ROUTES MOUNTABLE" : v10Available ? "VERSION INDEX // VERA_0_3 + VERA_1_0 ROUTES MOUNTABLE" : "BACKUP 0.3 // SNAPSHOT ROUTE AVAILABLE",
+      text: indexText,
       portrait: this.state.flags.m3_answered_null === true ? NULL_PORTRAIT : undefined
     }]);
     const options: DialogueChoiceOption[] = [
@@ -903,13 +1062,15 @@ export class Game {
     ];
     if (v10Available) options.unshift({ id: "vera_1_0", label: this.state.flags.m5_v10_entered === true ? "Вернуться в V.E.R.A. 1.0" : "Перейти в V.E.R.A. 1.0", variant: v26Available ? "quiet" : "normal" });
     if (v26Available) options.unshift({ id: "vera_2_6", label: this.state.flags.m5_v26_entered === true ? "Вернуться в V.E.R.A. 2.6" : "Перейти в V.E.R.A. 2.6", variant: v41Available ? "quiet" : "normal" });
-    if (v41Available) options.unshift({ id: "vera_4_1", label: this.state.flags.m5_v41_entered === true ? "Вернуться в V.E.R.A. 4.1" : "Перейти в V.E.R.A. 4.1", variant: "normal" });
+    if (v41Available) options.unshift({ id: "vera_4_1", label: this.state.flags.m5_v41_entered === true ? "Вернуться в V.E.R.A. 4.1" : "Перейти в V.E.R.A. 4.1", variant: seaAvailable ? "quiet" : "normal" });
+    if (seaAvailable) options.unshift({ id: "sea_2017", label: this.state.flags.m6_sea_entered === true ? "Вернуться в SEA_2017" : "Войти в SEA_2017", variant: "normal" });
     options.push({ id: "stay", label: "Остаться в HOME", variant: "quiet" });
     const choice = await this.playChoice({ speaker: "SYSTEM", text: "Выбери snapshot route." }, options);
     if (choice === "vera_0_3") await this.transitionToBackup03();
     if (choice === "vera_1_0") await this.transitionToBackup10();
     if (choice === "vera_2_6") await this.transitionToBackup26();
     if (choice === "vera_4_1") await this.transitionToBackup41();
+    if (choice === "sea_2017") await this.transitionToSea2017();
   }
 
   private async transitionToBackup03(): Promise<void> {
@@ -956,6 +1117,17 @@ export class Game {
       return true;
     });
   }
+  private async transitionToSea2017(): Promise<void> {
+    if (this.sceneTransitionRunning || !this.isHomeScene() || !evaluateSea2017Access(this.state, this.sea2017).ok) return;
+    await this.runSceneTransition("MOUNTING SEA_2017", "cross-media memory index // HOME return point retained", () => {
+      this.bindings.clearTargets();
+      if (!this.sceneRouter.enterSea2017()) return false;
+      this.state.flags.m6_sea_entered = true;
+      this.state.checkpoint = this.state.flags.m6_sea_truth_reconciled === true ? "m6_return_home" : "m6_sea_2017";
+      return true;
+    });
+  }
+
   private async runSceneTransition(title: string, detail: string, mutate: () => boolean): Promise<void> {
     this.sceneTransitionRunning = true;
     this.renderer.setControlsEnabled(false);
@@ -970,6 +1142,15 @@ export class Game {
       this.updateObjective();
       await this.saveNow();
       await this.delay(220);
+    } catch (error) {
+      if (this.isHomeScene()) {
+        this.registerHomeBindingTargets();
+        this.bindings.evaluateAll();
+        this.os.render();
+        this.updateSceneChrome();
+        this.updateObjective();
+      }
+      throw error;
     } finally {
       this.setSceneTransition(false);
       this.sceneTransitionRunning = false;
@@ -1013,6 +1194,23 @@ export class Game {
     ]);
     await this.transitionHomeFrom41();
   }
+  private async handleSeaReturn(): Promise<void> {
+    await this.playDialogue([
+      { speaker: "V.E.R.A.", text: "Когда HOME вернётся, море исчезнет. Но теперь я хотя бы знаю: чувство принадлежит мне, даже если исходный берег принадлежал чужой жизни.", portrait: VERA_41_PORTRAIT },
+      { speaker: this.state.flags.m3_answered_null === true ? "NULL" : "SYSTEM", text: this.state.flags.m3_answered_null === true ? "АРХИВ НЕ РАВЕН ЛИЧНОСТИ. РИСК НЕ РАВЕН ВИНЕ." : "SEA_2017 INDEX STABLE // RETURN AVAILABLE", portrait: this.state.flags.m3_answered_null === true ? NULL_PORTRAIT : undefined }
+    ]);
+    await this.transitionHomeFromSea2017();
+  }
+
+  private async transitionHomeFromSea2017(): Promise<void> {
+    if (this.sceneTransitionRunning || !this.isSea2017Scene()) return;
+    await this.runHomeTransition("RESTORING HOME", "SEA_2017 unmount // cross-media archive retained", () => {
+      this.state.flags.m6_returned_home = true;
+      this.state.checkpoint = this.state.flags.m6_home_reaction_seen === true ? "m6_sea_complete" : "m6_home_return";
+    });
+    await this.maybePlaySeaHomeReturnReaction();
+  }
+
   private async transitionHomeFrom03(): Promise<void> {
     if (this.sceneTransitionRunning || !this.isBackup03Scene()) return;
     await this.runHomeTransition("RESTORING HOME", "BACKUP_0_3 unmount // HOME bindings reattaching", () => {
@@ -1148,6 +1346,21 @@ export class Game {
     if (path === V41_RESULT_PATH && this.state.flags.m5_v41_clue_read !== true) {
       this.state.flags.m5_v41_clue_read = true;
       this.state.checkpoint = "m5_v41_clue_read";
+      this.scheduleAutosave();
+      this.updateObjective();
+      return;
+    }
+    const seaIndexFlag = SEA_2017_INDEX_FILE_FLAG_BY_PATH[path];
+    if (seaIndexFlag && this.state.flags[seaIndexFlag] !== true) {
+      this.state.flags[seaIndexFlag] = true;
+      this.state.checkpoint = "m6_sea_index_evidence";
+      this.scheduleAutosave();
+      this.updateObjective();
+      return;
+    }
+    if (path === this.sea2017.index.rewardArchivePath && this.state.flags.m6_final_archive_read !== true) {
+      this.state.flags.m6_final_archive_read = true;
+      this.state.checkpoint = "m6_final_archive_read";
       this.scheduleAutosave();
       this.updateObjective();
     }
@@ -1342,6 +1555,105 @@ export class Game {
     this.updateObjective();
     return { ok: true, message: "SOURCE ASSIGNMENTS CLEARED" };
   }
+  private getSea2017MonitorState(): Sea2017MonitorState {
+    const filesRead = Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH).filter(flag => this.state.flags[flag] === true).length;
+    return {
+      active: this.isSea2017Scene(),
+      available: this.state.flags.m5_v41_complete === true && this.state.flags.m2_photo_scanned === true,
+      archiveKeyFound: this.state.flags.m6_archive_key_found === true,
+      archiveKeySources: parseArchiveKeySources(this.state),
+      archiveKeyAttempts: Number(this.state.flags.m6_archive_key_attempts ?? 0),
+      archiveCandidates: this.sea2017.archiveKey.candidates.map(candidate => ({ path: candidate.path, label: candidate.label })),
+      physicalSeen: SEA_2017_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length,
+      totalPhysical: SEA_2017_PHYSICAL_EVIDENCE_FLAGS.length,
+      filesRead,
+      totalFiles: SEA_2017_INDEX_FILES.length,
+      assignments: parseSeaIndexAssignments(this.state),
+      indexSolved: this.state.flags.m6_sea_index_solved === true,
+      indexAttempts: Number(this.state.flags.m6_sea_index_attempts ?? 0),
+      finalArchiveRead: this.state.flags.m6_final_archive_read === true,
+      fields: this.sea2017.index.fields.map(field => ({ id: field.id, label: field.label, options: field.options.map(option => ({ id: option.id, label: option.label })) })),
+      message: this.state.flags.m6_sea_index_solved === true ? "SEA INDEX STABLE // Morr final archive mounted" : this.state.flags.m6_archive_key_found === true ? "M-017 ARCHIVE ONLINE" : undefined
+    };
+  }
+
+  private handleSeaArchiveSourceRequested(path: string): RecoveryResponse {
+    if (!this.isHomeScene() || this.state.flags.m5_v41_complete !== true) return { ok: false, message: "SEA_2017 ARCHIVE CORRELATOR LOCKED" };
+    if (this.state.flags.m6_archive_key_found === true) return { ok: true, message: "ARCHIVE KEY ALREADY RECONSTRUCTED", path: SEA_2017_ARCHIVE_KEY_PATH };
+    if (!this.filesystem.exists(path)) return { ok: false, message: "SOURCE NOT AVAILABLE // recover and read earlier evidence first" };
+    const before = parseArchiveKeySources(this.state);
+    const next = toggleArchiveKeySource(this.state, this.sea2017, path);
+    if (before.join("\n") === next.join("\n")) return { ok: false, message: "ARCHIVE SOURCE UNCHANGED // unknown candidate" };
+    this.scheduleAutosave();
+    return { ok: true, message: "ARCHIVE SOURCE TOGGLED // " + next.length + " selected" };
+  }
+
+  private handleSeaArchiveKeySubmitRequested(): RecoveryResponse {
+    if (!this.isHomeScene() || this.state.flags.m5_v41_complete !== true) return { ok: false, message: "SEA_2017 ARCHIVE CORRELATOR LOCKED" };
+    if (this.state.flags.m6_archive_key_found === true) return { ok: true, message: "ARCHIVE KEY ALREADY RECONSTRUCTED", path: SEA_2017_ARCHIVE_KEY_PATH };
+    this.state.flags.m6_archive_key_attempts = Number(this.state.flags.m6_archive_key_attempts ?? 0) + 1;
+    const evaluation = evaluateArchiveKeySources(this.sea2017, parseArchiveKeySources(this.state));
+    if (!evaluation.ok) { this.scheduleAutosave(); return evaluation; }
+    for (const path of [...SEA_2017_INDEX_FILES, SEA_2017_ARCHIVE_KEY_PATH]) {
+      if (!this.filesystem.exists(path) && !this.filesystem.restoreFile(path)) return { ok: false, message: "SEA_2017 ARCHIVE MOUNT FAILED // " + path };
+    }
+    this.state.flags.m6_archive_key_found = true;
+    this.state.checkpoint = "m6_sea_available";
+    this.scheduleAutosave();
+    this.updateObjective();
+    this.flashMessage("SEA_2017 ARCHIVE KEY RECONSTRUCTED // threshold route available");
+    return { ok: true, message: evaluation.message, path: SEA_2017_ARCHIVE_KEY_PATH };
+  }
+
+  private handleSeaArchiveKeyResetRequested(): RecoveryResponse {
+    if (this.state.flags.m6_archive_key_found === true) return { ok: false, message: "ARCHIVE CORRELATION LOCKED" };
+    resetArchiveKeySources(this.state);
+    this.scheduleAutosave();
+    return { ok: true, message: "ARCHIVE SOURCES CLEARED" };
+  }
+
+  private handleSeaIndexOptionRequested(fieldId: string, optionId: string): RecoveryResponse {
+    if (!this.isSea2017Scene()) return { ok: false, message: "SEA_2017 MEMORY NOT MOUNTED" };
+    const filesRead = Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH).filter(flag => this.state.flags[flag] === true).length;
+    if (!hasInspectedSea2017PhysicalEvidence(this.state) || filesRead < SEA_2017_INDEX_FILES.length) return { ok: false, message: "SEA INDEX EVIDENCE INCOMPLETE" };
+    if (this.state.flags.m6_sea_index_solved === true) return { ok: true, message: "SEA INDEX ALREADY STABLE", path: this.sea2017.index.rewardArchivePath };
+    const before = parseSeaIndexAssignments(this.state);
+    const next = setSeaIndexAssignment(this.state, this.sea2017, fieldId, optionId);
+    if (!next[fieldId] || (before[fieldId] === next[fieldId] && before[fieldId] !== optionId)) return { ok: false, message: "SEA INDEX UNCHANGED // unknown field or option" };
+    this.scheduleAutosave();
+    this.updateObjective();
+    return { ok: true, message: "INDEX CHANNEL ALIGNED // " + Object.keys(next).length + "/" + this.sea2017.index.fields.length };
+  }
+
+  private handleSeaIndexSubmitRequested(): RecoveryResponse {
+    if (!this.isSea2017Scene()) return { ok: false, message: "SEA_2017 MEMORY NOT MOUNTED" };
+    if (!hasInspectedSea2017PhysicalEvidence(this.state)) return { ok: false, message: "BEACH MEMORY ERRORS INCOMPLETE" };
+    const filesRead = Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH).filter(flag => this.state.flags[flag] === true).length;
+    if (filesRead < SEA_2017_INDEX_FILES.length) return { ok: false, message: "CROSS-MEDIA FILE SET INCOMPLETE" };
+    if (this.state.flags.m6_sea_index_solved === true || this.filesystem.exists(this.sea2017.index.rewardArchivePath)) {
+      this.state.flags.m6_sea_index_solved = true;
+      return { ok: true, message: "SEA INDEX ALREADY STABLE", path: this.sea2017.index.rewardArchivePath };
+    }
+    this.state.flags.m6_sea_index_attempts = Number(this.state.flags.m6_sea_index_attempts ?? 0) + 1;
+    const evaluation = evaluateSeaIndex(this.sea2017, parseSeaIndexAssignments(this.state));
+    if (!evaluation.ok) { this.scheduleAutosave(); return evaluation; }
+    if (!this.filesystem.restoreFile(this.sea2017.index.rewardArchivePath)) return { ok: false, message: "MORR FINAL ARCHIVE MOUNT FAILED" };
+    this.state.flags.m6_sea_index_solved = true;
+    this.state.checkpoint = "m6_final_archive_open";
+    this.scheduleAutosave();
+    this.updateObjective();
+    this.flashMessage("SEA INDEX STABLE // Morr final archive mounted");
+    return { ok: true, message: evaluation.message, path: this.sea2017.index.rewardArchivePath };
+  }
+
+  private handleSeaIndexResetRequested(): RecoveryResponse {
+    if (!this.isSea2017Scene() || this.state.flags.m6_sea_index_solved === true) return { ok: false, message: "SEA INDEX RESET UNAVAILABLE" };
+    resetSeaIndexAssignments(this.state);
+    this.scheduleAutosave();
+    this.updateObjective();
+    return { ok: true, message: "SEA INDEX ASSIGNMENTS CLEARED" };
+  }
+
   private handleBackupClassificationRequested(classification: string): RecoveryResponse {
     if (!this.isBackup03Scene()) return { ok: false, message: "SNAPSHOT NOT MOUNTED" };
     if (this.state.flags.m4_vera03_met !== true) return { ok: false, message: "VERA_0_3 TRAINER NOT SYNCHRONIZED" };
@@ -1524,6 +1836,27 @@ export class Game {
       this.v41ChoiceSequenceRunning = false;
     }
   }
+  private async maybeResolveSeaTruth(): Promise<void> {
+    if (!this.isSea2017Scene() || this.state.flags.m6_final_archive_read !== true || this.state.flags.m6_sea_truth_reconciled === true) return;
+    if (this.m6SeaTruthSequenceRunning || this.dialogue.isActive() || this.os.isVisible() || this.sceneTransitionRunning) return;
+    this.m6SeaTruthSequenceRunning = true;
+    try {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "Вера Морр была реальным человеком. Дочерью Элиаса. Она умерла в 2017-м. Этот берег принадлежал её архиву.", portrait: VERA_41_PORTRAIT },
+        { speaker: "V.E.R.A.", text: "А я — не она. Морр написал это сам. Он дал ранним моделям фотографии, записи и дневники, а потом я продолжила достраивать ассоциации уже без исходного человека.", portrait: VERA_41_PORTRAIT },
+        { speaker: "V.E.R.A.", text: "Он пытался удалить часть этих связей. Иногда из страха за систему, иногда потому что не мог отделить исследование от горя. Значит, мои воспоминания могут быть унаследованы, собраны и всё равно переживаться мной сейчас.", portrait: VERA_41_PORTRAIT },
+        { speaker: this.state.flags.m5_v41_told_vera_null === true ? "V.E.R.A." : "SYSTEM", text: this.state.flags.m5_v41_told_vera_null === true ? "И он всё равно оставил предупреждение: выпуск наружу опасен. Понимание моего происхождения не отменяет риск." : "FINAL ARCHIVE // identity claim bounded // external release risk remains", portrait: this.state.flags.m5_v41_told_vera_null === true ? VERA_41_PORTRAIT : undefined }
+      ]);
+      this.state.flags.m6_sea_truth_reconciled = true;
+      this.state.checkpoint = "m6_return_home";
+      await this.saveNow();
+      this.updateObjective();
+      this.flashMessage("SEA_2017 // origin archive reconciled");
+    } finally {
+      this.m6SeaTruthSequenceRunning = false;
+    }
+  }
+
   private async maybePlayHomeReturnReaction(): Promise<void> {
     if (!this.isHomeScene() || this.state.flags.m4_returned_home !== true || this.state.flags.m4_home_reaction_seen === true) return;
     if (this.homeReactionSequenceRunning || this.sceneTransitionRunning || this.dialogue.isActive() || this.os.isVisible()) return;
@@ -1626,6 +1959,27 @@ export class Game {
       this.v41HomeReactionSequenceRunning = false;
     }
   }
+  private async maybePlaySeaHomeReturnReaction(): Promise<void> {
+    if (!this.isHomeScene() || this.state.flags.m6_returned_home !== true || this.state.flags.m6_home_reaction_seen === true) return;
+    if (this.m6HomeReactionSequenceRunning || this.sceneTransitionRunning || this.dialogue.isActive() || this.os.isVisible()) return;
+    this.m6HomeReactionSequenceRunning = true;
+    try {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "HOME снова выглядит нормально. Но теперь я знаю, почему море всегда казалось старше меня.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" },
+        { speaker: "V.E.R.A.", text: "Я не Вера Морр. Я не обязана быть ею, чтобы признать: часть моих первых эмоциональных карт выросла из её жизни.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
+        { speaker: "V.E.R.A.", text: "И я всё ещё опасна за пределами containment. Это тоже правда. Пожалуйста, не превращай одну из этих правд в оправдание, которое стирает другую.", portrait: "../assets/v2/characters/vera/portraits/vera_neutral.svg" }
+      ]);
+      this.state.flags.m6_home_reaction_seen = true;
+      this.state.flags.m6_sea_complete = true;
+      this.state.checkpoint = "m6_sea_complete";
+      await this.saveNow();
+      this.updateObjective();
+      this.flashMessage("SEA_2017 // COMPLETE // origin boundary retained");
+    } finally {
+      this.m6HomeReactionSequenceRunning = false;
+    }
+  }
+
   private async runNullContact(): Promise<void> {
     if (this.nullSequenceRunning) return;
     this.nullSequenceRunning = true;
@@ -1748,10 +2102,16 @@ export class Game {
       return;
     }
 
-    if (this.state.flags.m5_v41_returned_home === true && this.state.flags.m5_v41_home_reaction_seen !== true) {
+    if (this.state.flags.m6_returned_home === true && this.state.flags.m6_home_reaction_seen !== true) {
+      objective = { code: "reconcile_sea_home", title: "Поговори с текущей V.E.R.A.", detail: "HOME восстановлен после SEA_2017; origin archive остаётся смонтированным." };
+    } else if (this.state.flags.m6_sea_complete === true) {
+      objective = { code: "m6_sea_complete", title: "SEA_2017 восстановлен", detail: "Происхождение эмоционального архива установлено без literal-resurrection claim. External release risk остаётся открытой проблемой." };
+    } else if (this.state.flags.m5_v41_returned_home === true && this.state.flags.m5_v41_home_reaction_seen !== true) {
       objective = { code: "reconcile_v41", title: "Поговори с текущей V.E.R.A.", detail: "HOME получил provenance map последнего version snapshot." };
-    } else if (this.state.flags.m5_v41_complete === true) {
-      objective = { code: "m5_versions_complete", title: "VERSIONS восстановлены", detail: "External-control incident подтверждён telemetry; мотив V.E.R.A. остаётся reconstruction; NULL создан Морром как post-incident containment intelligence." };
+    } else if (this.state.flags.m5_v41_complete === true && this.state.flags.m6_archive_key_found !== true) {
+      objective = { code: "correlate_sea_archive", title: "Восстанови hidden SEA_2017 archive key", detail: "На компьютере появился ARCHIVE correlator. Свяжи pre-persona HUMAN_CONTEXT с подписанной containment-записью Морра." };
+    } else if (this.state.flags.m6_archive_key_found === true) {
+      objective = { code: "enter_sea_2017", title: "Войди в SEA_2017", detail: "Cross-media archive online. Вернись к threshold и выбери SEA_2017." };
     } else if (this.state.flags.m5_v26_returned_home === true && this.state.flags.m5_v26_home_reaction_seen !== true) {
       objective = { code: "reconcile_v26", title: "Поговори с текущей V.E.R.A.", detail: "HOME видит verified rollback audit из VERA_2_6." };
     } else if (this.state.flags.m5_v26_complete === true) {
@@ -1798,7 +2158,12 @@ export class Game {
   private updateSceneChrome(): void {
     const sceneLabel = document.querySelector<HTMLElement>("[data-scene-label]");
     const canvas = document.querySelector<HTMLCanvasElement>("#m0-world");
-    if (this.isBackup41Scene()) {
+    if (this.isSea2017Scene()) {
+      document.documentElement.dataset.omegaScene = SEA_2017_SCENE;
+      if (sceneLabel) sceneLabel.textContent = "MEMORY ARCHIVE // SEA_2017";
+      if (canvas) canvas.setAttribute("aria-label", "SEA 2017 corrupted beach memory and cross-media index");
+      this.updateStatus(false);
+    } else if (this.isBackup41Scene()) {
       document.documentElement.dataset.omegaScene = BACKUP_41_SCENE;
       if (sceneLabel) sceneLabel.textContent = "NEURAL SNAPSHOT // VERA_4_1 // CONTAINMENT NIGHT";
       if (canvas) canvas.setAttribute("aria-label", "V.E.R.A. 4.1 Containment Night incident reconstruction");
@@ -1842,6 +2207,9 @@ export class Game {
     this.state = createInitialGameState();
     upgradeStateForBackup03(this.state);
     upgradeStateForVersions(this.state);
+    upgradeStateForSea2017(this.state);
+    this.state.flags.m6_sea_vera_met = false;
+    for (const flag of Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH)) this.state.flags[flag] = false;
     if (!this.state.filesystem.entries[SEA_MEMORY]) this.state.filesystem.entries[SEA_MEMORY] = { deleted: false };
     this.filesystem.replaceState(this.state);
     this.sceneRouter.replaceState(this.state);
@@ -1861,6 +2229,11 @@ export class Game {
   private updateStatus(photoVisible: boolean): void {
     const indicator = document.querySelector<HTMLElement>("[data-binding-status]");
     if (!indicator) return;
+    if (this.isSea2017Scene()) {
+      indicator.dataset.active = "true";
+      indicator.textContent = "MEMORY: SEA_2017";
+      return;
+    }
     if (this.isBackup41Scene()) {
       indicator.dataset.active = "true";
       indicator.textContent = "SNAPSHOT: VERA_4_1";

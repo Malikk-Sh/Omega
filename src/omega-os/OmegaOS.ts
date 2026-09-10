@@ -49,6 +49,24 @@ export interface Backup41MonitorState {
   evidence: Array<{ id: string; label: string }>;
   message?: string;
 }
+export interface Sea2017MonitorState {
+  active: boolean;
+  available: boolean;
+  archiveKeyFound: boolean;
+  archiveKeySources: string[];
+  archiveKeyAttempts: number;
+  archiveCandidates: Array<{ path: string; label: string }>;
+  physicalSeen: number;
+  totalPhysical: number;
+  filesRead: number;
+  totalFiles: number;
+  assignments: Record<string, string>;
+  indexSolved: boolean;
+  indexAttempts: number;
+  finalArchiveRead: boolean;
+  fields: Array<{ id: string; label: string; options: Array<{ id: string; label: string }> }>;
+  message?: string;
+}
 export interface OmegaOSCallbacks {
   onSaveRequested: () => void;
   onResetRequested: () => void;
@@ -67,10 +85,17 @@ export interface OmegaOSCallbacks {
   getBackup41State?: () => Backup41MonitorState;
   onBackup41SourceRequested?: (evidenceId: string, source: string) => RecoveryResponse;
   onBackup41ResetRequested?: () => RecoveryResponse;
+  getSea2017State?: () => Sea2017MonitorState;
+  onSeaArchiveSourceRequested?: (path: string) => RecoveryResponse;
+  onSeaArchiveKeySubmitRequested?: () => RecoveryResponse;
+  onSeaArchiveKeyResetRequested?: () => RecoveryResponse;
+  onSeaIndexOptionRequested?: (fieldId: string, optionId: string) => RecoveryResponse;
+  onSeaIndexSubmitRequested?: () => RecoveryResponse;
+  onSeaIndexResetRequested?: () => RecoveryResponse;
 }
 
 type PreviewMode = "text" | "evidence";
-type WorkspaceMode = "home" | "backup03" | "backup10" | "backup26" | "backup41";
+type WorkspaceMode = "home" | "backup03" | "backup10" | "backup26" | "backup41" | "sea2017";
 
 const BACKUP_03_ROOT = "/backups/vera_0_3";
 const BACKUP_03_TRAINING = `${BACKUP_03_ROOT}/training`;
@@ -84,6 +109,9 @@ const BACKUP_26_RESULT = `${BACKUP_26_ROOT}/result`;
 const BACKUP_41_ROOT = "/backups/vera_4_1";
 const BACKUP_41_EVIDENCE = `${BACKUP_41_ROOT}/evidence`;
 const BACKUP_41_RESULT = `${BACKUP_41_ROOT}/result`;
+const SEA_2017_ROOT = "/archives/sea_2017";
+const SEA_2017_INDEX = `${SEA_2017_ROOT}/index`;
+const SEA_2017_FINAL = "/archives/morr/final";
 
 export class OmegaOS {
   private visible = false;
@@ -95,6 +123,8 @@ export class OmegaOS {
   private backupMessage = "";
   private rollbackMessage = "";
   private incidentMessage = "";
+  private archiveMessage = "";
+  private seaIndexMessage = "";
   private readonly subscriptions: Unsubscribe[] = [];
 
   constructor(
@@ -145,26 +175,38 @@ export class OmegaOS {
     const backup41 = this.callbacks.getBackup41State?.() ?? {
       active: false, evidenceSeen: 0, totalEvidence: 3, logsRead: 0, totalLogs: 6, assignments: {}, solved: false, attempts: 0, evidence: []
     };
-    const mode: WorkspaceMode = backup03.active ? "backup03" : backup10.active ? "backup10" : backup26.active ? "backup26" : backup41.active ? "backup41" : "home";
+    const sea2017 = this.callbacks.getSea2017State?.() ?? {
+      active: false, available: false, archiveKeyFound: false, archiveKeySources: [], archiveKeyAttempts: 0, archiveCandidates: [],
+      physicalSeen: 0, totalPhysical: 4, filesRead: 0, totalFiles: 4, assignments: {}, indexSolved: false, indexAttempts: 0, finalArchiveRead: false, fields: []
+    };
+    const mode: WorkspaceMode = backup03.active ? "backup03" : backup10.active ? "backup10" : backup26.active ? "backup26" : backup41.active ? "backup41" : sea2017.active ? "sea2017" : "home";
     const in03Path = this.currentDirectory.startsWith(BACKUP_03_ROOT);
     const in10Path = this.currentDirectory.startsWith(BACKUP_10_ROOT);
     const in26Path = this.currentDirectory.startsWith(BACKUP_26_ROOT);
     const in41Path = this.currentDirectory.startsWith(BACKUP_41_ROOT);
+    const inSeaPath = this.currentDirectory.startsWith(SEA_2017_ROOT) || this.currentDirectory.startsWith(SEA_2017_FINAL);
     const inAnyBackupPath = in03Path || in10Path || in26Path || in41Path;
 
     if (mode === "backup03" && !in03Path) this.currentDirectory = BACKUP_03_TRAINING;
     if (mode === "backup10" && !in10Path) this.currentDirectory = BACKUP_10_SOURCE;
     if (mode === "backup26" && !in26Path) this.currentDirectory = BACKUP_26_AUDIT;
     if (mode === "backup41" && !in41Path) this.currentDirectory = BACKUP_41_EVIDENCE;
+    if (mode === "sea2017" && !inSeaPath) this.currentDirectory = SEA_2017_INDEX;
     if (mode === "home" && inAnyBackupPath) this.currentDirectory = "/memories";
+    if (mode === "home" && inSeaPath && !sea2017.available) this.currentDirectory = "/memories";
     if (mode === "backup03" && (in10Path || in26Path || in41Path)) this.currentDirectory = BACKUP_03_TRAINING;
     if (mode === "backup10" && (in03Path || in26Path || in41Path)) this.currentDirectory = BACKUP_10_SOURCE;
     if (mode === "backup26" && (in03Path || in10Path || in41Path)) this.currentDirectory = BACKUP_26_AUDIT;
-    if (mode === "backup41" && (in03Path || in10Path || in26Path)) this.currentDirectory = BACKUP_41_EVIDENCE;
+    if (mode === "backup41" && (in03Path || in10Path || in26Path || inSeaPath)) this.currentDirectory = BACKUP_41_EVIDENCE;
+    if (mode === "backup03" && inSeaPath) this.currentDirectory = BACKUP_03_TRAINING;
+    if (mode === "backup10" && inSeaPath) this.currentDirectory = BACKUP_10_SOURCE;
+    if (mode === "backup26" && inSeaPath) this.currentDirectory = BACKUP_26_AUDIT;
+    if (mode === "sea2017" && (in03Path || in10Path || in26Path || in41Path)) this.currentDirectory = SEA_2017_INDEX;
     if (this.currentDirectory === "/system/processes" && !processState.unlocked) this.currentDirectory = "/system/logs";
     if (this.currentDirectory === BACKUP_10_AUDIT && !backup10.puzzleSolved) this.currentDirectory = BACKUP_10_SOURCE;
     if (this.currentDirectory === BACKUP_26_RESULT && !backup26.auditSolved) this.currentDirectory = BACKUP_26_AUDIT;
     if (this.currentDirectory === BACKUP_41_RESULT && !backup41.solved) this.currentDirectory = BACKUP_41_EVIDENCE;
+    if (this.currentDirectory === SEA_2017_FINAL && !sea2017.indexSolved) this.currentDirectory = SEA_2017_INDEX;
 
     const entries = this.filesystem.listDirectory(this.currentDirectory, true);
     const preview = this.previewPath ? this.filesystem.readFile(this.previewPath) : null;
@@ -172,6 +214,8 @@ export class OmegaOS {
     const inBackupTraining = mode === "backup03" && this.currentDirectory === BACKUP_03_TRAINING;
     const inRollbackAudit = mode === "backup26" && this.currentDirectory === BACKUP_26_AUDIT;
     const inIncidentAudit = mode === "backup41" && this.currentDirectory === BACKUP_41_EVIDENCE;
+    const inArchiveCorrelator = mode === "home" && this.currentDirectory === SEA_2017_INDEX && sea2017.available;
+    const inSeaIndex = mode === "sea2017" && this.currentDirectory === SEA_2017_INDEX;
     const workspace = mode === "backup03"
       ? "BACKUP MANAGER / VERA_0_3"
       : mode === "backup10"
@@ -180,7 +224,9 @@ export class OmegaOS {
           ? "ROLLBACK AUDIT / VERA_2_6"
           : mode === "backup41"
             ? "INCIDENT RECONSTRUCTION / VERA_4_1"
-            : "INVESTIGATION WORKSPACE / HOME";
+            : mode === "sea2017"
+              ? "MEMORY INDEX / SEA_2017"
+              : "INVESTIGATION WORKSPACE / HOME";
 
     this.root.innerHTML = `
       <section class="m0-os-window m2-os-window m3-os-window ${mode !== "home" ? "m4-os-window" : ""}" role="dialog" aria-label="OMEGA OS">
@@ -189,10 +235,10 @@ export class OmegaOS {
           <button class="m0-icon-btn" type="button" data-os-close aria-label="Закрыть OMEGA OS">×</button>
         </header>
         <nav class="m2-os-nav" aria-label="OMEGA directories">
-          ${mode === "backup03" ? this.backup03Navigation(backup03) : mode === "backup10" ? this.backup10Navigation(backup10) : mode === "backup26" ? this.backup26Navigation(backup26) : mode === "backup41" ? this.backup41Navigation(backup41) : this.homeNavigation(processState)}
+          ${mode === "backup03" ? this.backup03Navigation(backup03) : mode === "backup10" ? this.backup10Navigation(backup10) : mode === "backup26" ? this.backup26Navigation(backup26) : mode === "backup41" ? this.backup41Navigation(backup41) : mode === "sea2017" ? this.sea2017Navigation(sea2017) : this.homeNavigation(processState, sea2017)}
         </nav>
         <div class="m0-os-toolbar m2-os-toolbar">
-          <span>${inProcessMonitor ? "Process Monitor" : inBackupTraining ? "Training Console" : inRollbackAudit ? "Rollback Audit" : inIncidentAudit ? "Incident Reconstruction" : mode === "backup10" ? "Reconstruction Explorer" : mode === "backup26" ? "Audit Result" : mode === "backup41" ? "Incident Result" : "Explorer"}</span><code>${this.escape(this.currentDirectory)}</code>
+          <span>${inProcessMonitor ? "Process Monitor" : inBackupTraining ? "Training Console" : inRollbackAudit ? "Rollback Audit" : inIncidentAudit ? "Incident Reconstruction" : inArchiveCorrelator ? "Archive Correlator" : inSeaIndex ? "Sea Index" : mode === "backup10" ? "Reconstruction Explorer" : mode === "backup26" ? "Audit Result" : mode === "backup41" ? "Incident Result" : mode === "sea2017" ? "Morr Archive" : "Explorer"}</span><code>${this.escape(this.currentDirectory)}</code>
           <div class="m2-toolbar-actions"><button type="button" data-os-save>Сохранить</button><button type="button" data-os-reset>${mode === "home" ? "Сбросить HOME" : "Сбросить игру"}</button></div>
         </div>
         ${inProcessMonitor ? this.processMonitor(processState, entries) : this.fileList(entries)}
@@ -200,8 +246,10 @@ export class OmegaOS {
         ${inBackupTraining ? this.backupClassifier(backup03) : ""}
         ${inRollbackAudit ? this.rollbackAudit(backup26) : ""}
         ${inIncidentAudit ? this.incidentReconstruction(backup41) : ""}
-        ${mode === "home" && !inProcessMonitor ? this.recoveryConsole() : ""}
-        <footer class="m0-os-status">${this.footerText(mode, inProcessMonitor, backup10, backup26, backup41)}</footer>
+        ${inArchiveCorrelator ? this.archiveCorrelator(sea2017) : ""}
+        ${inSeaIndex ? this.seaIndex(sea2017) : ""}
+        ${mode === "home" && !inProcessMonitor && !inArchiveCorrelator ? this.recoveryConsole() : ""}
+        <footer class="m0-os-status">${this.footerText(mode, inProcessMonitor, backup10, backup26, backup41, sea2017)}</footer>
       </section>`;
     this.bindEvents();
   }
@@ -309,10 +357,46 @@ export class OmegaOS {
       this.previewPath = null;
       this.render();
     });
+    this.root.querySelectorAll<HTMLElement>("[data-m6-key-source]").forEach(button => {
+      button.addEventListener("click", () => {
+        const result = this.callbacks.onSeaArchiveSourceRequested?.(button.dataset.m6KeySource ?? "") ?? { ok: false, message: "ARCHIVE CORRELATOR OFFLINE" };
+        this.archiveMessage = result.message;
+        this.render();
+      });
+    });
+    this.root.querySelector<HTMLElement>("[data-m6-key-submit]")?.addEventListener("click", () => {
+      const result = this.callbacks.onSeaArchiveKeySubmitRequested?.() ?? { ok: false, message: "ARCHIVE CORRELATOR OFFLINE" };
+      this.archiveMessage = result.message;
+      if (result.ok) this.currentDirectory = SEA_2017_INDEX;
+      this.render();
+    });
+    this.root.querySelector<HTMLElement>("[data-m6-key-reset]")?.addEventListener("click", () => {
+      const result = this.callbacks.onSeaArchiveKeyResetRequested?.() ?? { ok: false, message: "ARCHIVE CORRELATOR OFFLINE" };
+      this.archiveMessage = result.message;
+      this.render();
+    });
+    this.root.querySelectorAll<HTMLElement>("[data-m6-index-option]").forEach(button => {
+      button.addEventListener("click", () => {
+        const result = this.callbacks.onSeaIndexOptionRequested?.(button.dataset.m6IndexField ?? "", button.dataset.m6IndexOption ?? "") ?? { ok: false, message: "SEA INDEX OFFLINE" };
+        this.seaIndexMessage = result.message;
+        this.render();
+      });
+    });
+    this.root.querySelector<HTMLElement>("[data-m6-index-submit]")?.addEventListener("click", () => {
+      const result = this.callbacks.onSeaIndexSubmitRequested?.() ?? { ok: false, message: "SEA INDEX OFFLINE" };
+      this.seaIndexMessage = result.message;
+      if (result.ok && result.path) this.currentDirectory = SEA_2017_FINAL;
+      this.render();
+    });
+    this.root.querySelector<HTMLElement>("[data-m6-index-reset]")?.addEventListener("click", () => {
+      const result = this.callbacks.onSeaIndexResetRequested?.() ?? { ok: false, message: "SEA INDEX OFFLINE" };
+      this.seaIndexMessage = result.message;
+      this.render();
+    });
   }
 
-  private homeNavigation(processState: ProcessMonitorState): string {
-    return `${this.directoryButton("/memories", "MEMORY")}${this.directoryButton("/system/logs", "SYSTEM LOGS")}${processState.unlocked ? this.directoryButton("/system/processes", "PROCESS") : ""}`;
+  private homeNavigation(processState: ProcessMonitorState, sea2017: Sea2017MonitorState): string {
+    return `${this.directoryButton("/memories", "MEMORY")}${this.directoryButton("/system/logs", "SYSTEM LOGS")}${processState.unlocked ? this.directoryButton("/system/processes", "PROCESS") : ""}${sea2017.available ? this.directoryButton(SEA_2017_INDEX, sea2017.archiveKeyFound ? "SEA_2017" : "ARCHIVE") : ""}`;
   }
 
   private backup03Navigation(state: Backup03MonitorState): string {
@@ -329,6 +413,10 @@ export class OmegaOS {
 
   private backup41Navigation(state: Backup41MonitorState): string {
     return `${this.directoryButton(BACKUP_41_EVIDENCE, "EVIDENCE")}${state.solved ? this.directoryButton(BACKUP_41_RESULT, "RESULT") : ""}`;
+  }
+
+  private sea2017Navigation(state: Sea2017MonitorState): string {
+    return `${this.directoryButton(SEA_2017_INDEX, "SEA INDEX")}${state.indexSolved ? this.directoryButton(SEA_2017_FINAL, "MORR FINAL") : ""}`;
   }
 
   private directoryButton(path: string, label: string): string {
@@ -406,7 +494,26 @@ export class OmegaOS {
     const phase = state.solved ? "SOURCE MAP VERIFIED" : ready ? `CLASSIFIED ${classified}/${state.evidence.length}` : "EVIDENCE REQUIRED";
     return `<section class="m5-incident-audit" aria-label="VERA 4.1 incident reconstruction"><header><div><strong>INCIDENT RECONSTRUCTION</strong><small>VERA_4_1 // SOURCE RELIABILITY</small></div><span>${phase}</span></header><div class="m5-audit-progress"><span>PHYSICAL ${state.evidenceSeen}/${state.totalEvidence}</span><span>FILES ${state.logsRead}/${state.totalLogs}</span><span>ATTEMPTS ${state.attempts}</span></div><p>${state.solved ? "Provenance separated. The reconstruction result distinguishes direct external-control telemetry, V.E.R.A. mnemonic motive and Morr containment notes." : ready ? "Assign every evidence item to its provenance. A memory can be emotionally coherent without being direct telemetry; a signed Morr note is still an operator account." : "Inspect the three physical witness layers in Containment Night and read all six evidence files before classifying provenance."}</p><div class="m5-incident-grid">${evidenceRows}</div><button class="m5-audit-reset" type="button" data-v41-reset ${ready && !state.solved && classified ? "" : "disabled"}>RESET SOURCES</button><output>${this.escape(this.incidentMessage || state.message || phase)}</output></section>`;
   }
-  private footerText(mode: WorkspaceMode, inProcessMonitor: boolean, backup10: Backup10MonitorState, backup26: Backup26MonitorState, backup41: Backup41MonitorState): string {
+  private archiveCorrelator(state: Sea2017MonitorState): string {
+    const selected = new Set(state.archiveKeySources);
+    const buttons = state.archiveCandidates.map(candidate => `<button type="button" data-m6-key-source="${this.escape(candidate.path)}" class="${selected.has(candidate.path) ? "is-selected" : ""}" ${state.archiveKeyFound ? "disabled" : ""}><strong>${this.escape(candidate.label)}</strong><code>${this.escape(candidate.path)}</code></button>`).join("");
+    const phase = state.archiveKeyFound ? "KEY RECONSTRUCTED" : `SOURCES ${state.archiveKeySources.length}`;
+    return `<section class="m6-archive-correlator" aria-label="SEA 2017 archive correlator"><header><div><strong>ARCHIVE CORRELATOR</strong><small>M-017 // CROSS-VERSION SOURCE LINK</small></div><span>${phase}</span></header><p>SEA_2017 требует не пароль, а связь между pre-persona HUMAN_CONTEXT и подписанной containment-записью Морра. Выбери только источники, которые образуют эту связь.</p><div class="m6-source-grid">${buttons}</div><div class="m6-inline-actions"><button type="button" data-m6-key-submit ${!state.archiveKeyFound && state.archiveKeySources.length ? "" : "disabled"}>CORRELATE</button><button type="button" data-m6-key-reset ${!state.archiveKeyFound && state.archiveKeySources.length ? "" : "disabled"}>RESET</button></div><output>${this.escape(this.archiveMessage || state.message || phase)}</output></section>`;
+  }
+
+  private seaIndex(state: Sea2017MonitorState): string {
+    const ready = state.physicalSeen >= state.totalPhysical && state.filesRead >= state.totalFiles;
+    const rows = state.fields.map(field => {
+      const current = state.assignments[field.id] ?? "";
+      const options = field.options.map(option => `<button type="button" data-m6-index-field="${this.escape(field.id)}" data-m6-index-option="${this.escape(option.id)}" class="${current === option.id ? "is-selected" : ""}" ${ready && !state.indexSolved ? "" : "disabled"}>${this.escape(option.label)}</button>`).join("");
+      return `<article class="m6-index-row"><div><strong>${this.escape(field.label)}</strong><code>${this.escape(field.id)}</code></div><div>${options}</div></article>`;
+    }).join("");
+    const aligned = Object.keys(state.assignments).length;
+    const phase = state.indexSolved ? "INDEX STABLE" : ready ? `ALIGNED ${aligned}/${state.fields.length}` : "EVIDENCE REQUIRED";
+    return `<section class="m6-sea-index" aria-label="SEA 2017 cross-media index"><header><div><strong>SEA INDEX</strong><small>P12 // CROSS-MEDIA DEDUCTION</small></div><span>${phase}</span></header><div class="m5-audit-progress"><span>BEACH ${state.physicalSeen}/${state.totalPhysical}</span><span>INDEX FILES ${state.filesRead}/${state.totalFiles}</span><span>ATTEMPTS ${state.indexAttempts}</span></div><p>${state.indexSolved ? "Пять каналов согласованы. Финальный архив Морра смонтирован." : ready ? "Сопоставь дату, camera sequence, audio marker, tide marker и CREATE-order. Каждый выбор должен подтверждаться отдельным источником." : "Осмотри четыре невозможных детали пляжа и прочитай camera/audio/tide/directory index files. После этого выравнивание разблокируется."}</p><div class="m6-index-grid">${rows}</div><div class="m6-inline-actions"><button type="button" data-m6-index-submit ${ready && !state.indexSolved && aligned === state.fields.length ? "" : "disabled"}>ALIGN INDEX</button><button type="button" data-m6-index-reset ${ready && !state.indexSolved && aligned ? "" : "disabled"}>RESET</button></div><output>${this.escape(this.seaIndexMessage || state.message || phase)}</output></section>`;
+  }
+
+  private footerText(mode: WorkspaceMode, inProcessMonitor: boolean, backup10: Backup10MonitorState, backup26: Backup26MonitorState, backup41: Backup41MonitorState, sea2017: Sea2017MonitorState): string {
     if (mode === "backup03") return "VERA_0_3 is an isolated snapshot. Physical samples and indexed labels describe the same training state.";
     if (mode === "backup10") return backup10.puzzleSolved
       ? "VERA_1_0 audit proves reconstruction can add meaningful objects absent from the source capture."
@@ -417,6 +524,9 @@ export class OmegaOS {
     if (mode === "backup41") return backup41.solved
       ? "VERA_4_1: provenance map separates telemetry, reconstruction and Morr notes before drawing incident conclusions."
       : "P11 SOURCE RELIABILITY // classify what each witness can actually prove.";
+    if (mode === "sea2017") return sea2017.indexSolved
+      ? "SEA_2017: five cross-media channels agree; read Morr's final archive before leaving the memory."
+      : "P12 CROSS-MEDIA DEDUCTION // the beach is a memory index, not a literal recording.";
     if (inProcessMonitor) return "PROCESS view reconstructed from cold-index evidence. Route changes may alter HOME.";
     return "HOME отражает состояние индексированных файлов. Не все изменения обратимы.";
   }

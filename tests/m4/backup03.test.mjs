@@ -70,8 +70,11 @@ const host = {
 const router = new SceneRouter(loadedM3, host);
 const homePosition = [...loadedM3.player.position];
 assert.equal(router.enterBackup03(), true, 'open threshold should route into BACKUP_0_3');
+assert.equal(router.enterBackup03(), false, 'repeated traversal input must not mount BACKUP_0_3 twice');
+assert.equal(router.isTransitioning, false, 'router transition guard must release after a successful mount');
 assert.equal(loadedM3.world.activeScene, BACKUP_03_SCENE, 'traversal must persist active backup scene');
 assert.deepEqual(loadedM3.world.returnPoint?.player.position, homePosition, 'HOME return transform must be preserved');
+assert.deepEqual(mounts, [BACKUP_03_SCENE], 'double traversal must still produce exactly one backup mount');
 
 loadedM3.flags.m4_backup_entered = true;
 loadedM3.flags.m4_vera03_met = true;
@@ -97,6 +100,7 @@ assert.equal(loadedBackup.filesystem.entries[BACKUP_03_ARCHIVE_PATH]?.deleted, f
 
 const returnRouter = new SceneRouter(loadedBackup, host);
 assert.equal(returnRouter.returnHome(), true, 'backup threshold should return to HOME');
+assert.equal(returnRouter.returnHome(), false, 'repeated return input must not mount HOME twice');
 assert.equal(loadedBackup.world.activeScene, HOME_SCENE, 'return must restore HOME as active scene');
 assert.deepEqual(loadedBackup.player.position, homePosition, 'return must restore HOME position');
 let restoredThresholdVisible = null;
@@ -114,6 +118,54 @@ assert.ok(afterReturn, 'returned M4 save should load');
 assert.equal(afterReturn.world.activeScene, HOME_SCENE, 'reload after return must not spawn in backup');
 assert.equal(afterReturn.flags.m4_home_reaction_seen, true, 'current V.E.R.A. reaction must persist');
 
+const failedEnterState = createInitialGameState(6500);
+upgradeStateForBackup03(failedEnterState);
+failedEnterState.player.position = [1.25, 1.62, -0.75];
+const failedEnterPosition = [...failedEnterState.player.position];
+const failedEnterMounts = [];
+let failBackupMount = true;
+const failedEnterRouter = new SceneRouter(failedEnterState, {
+  writePlayerState() {},
+  mountScene(sceneId) {
+    failedEnterMounts.push(sceneId);
+    if (sceneId === BACKUP_03_SCENE && failBackupMount) {
+      failBackupMount = false;
+      throw new Error('backup build failed');
+    }
+  }
+});
+assert.throws(() => failedEnterRouter.enterBackup03(), /backup build failed/, 'failed backup mount must surface its error');
+assert.equal(failedEnterState.world.activeScene, HOME_SCENE, 'failed backup mount must roll canonical scene back to HOME');
+assert.deepEqual(failedEnterState.player.position, failedEnterPosition, 'failed backup mount must restore HOME player transform');
+assert.equal(failedEnterState.world.returnPoint, undefined, 'failed backup mount must not leave a stale return point');
+assert.equal(failedEnterRouter.isTransitioning, false, 'failed mount must release the transition guard');
+assert.deepEqual(failedEnterMounts, [BACKUP_03_SCENE, HOME_SCENE], 'failed backup mount must remount the previous HOME scene');
+assert.equal(failedEnterRouter.enterBackup03(), true, 'router must allow a clean retry after rollback');
+assert.equal(failedEnterState.world.activeScene, BACKUP_03_SCENE, 'retry after rollback must reach backup');
+
+const failedReturnState = structuredClone(failedEnterState);
+const failedReturnPoint = structuredClone(failedReturnState.world.returnPoint);
+const failedReturnMounts = [];
+let failHomeMount = true;
+const failedReturnRouter = new SceneRouter(failedReturnState, {
+  writePlayerState() {},
+  mountScene(sceneId) {
+    failedReturnMounts.push(sceneId);
+    if (sceneId === HOME_SCENE && failHomeMount) {
+      failHomeMount = false;
+      throw new Error('home build failed');
+    }
+  }
+});
+assert.throws(() => failedReturnRouter.returnHome(), /home build failed/, 'failed HOME remount must surface its error');
+assert.equal(failedReturnState.world.activeScene, BACKUP_03_SCENE, 'failed HOME mount must roll canonical scene back to backup');
+assert.deepEqual(failedReturnState.world.returnPoint, failedReturnPoint, 'failed HOME mount must preserve the original HOME return point');
+assert.equal(failedReturnRouter.isTransitioning, false, 'failed HOME mount must release the transition guard');
+assert.deepEqual(failedReturnMounts, [HOME_SCENE, BACKUP_03_SCENE], 'failed HOME mount must remount the previous backup scene');
+assert.equal(failedReturnRouter.returnHome(), true, 'HOME return must be retryable after rollback');
+assert.equal(failedReturnState.world.activeScene, HOME_SCENE, 'retry after HOME rollback must succeed');
+assert.equal(failedReturnState.world.returnPoint, undefined, 'successful HOME retry must consume the return point');
+
 const resetState = createInitialGameState(7000);
 upgradeStateForBackup03(resetState);
 const resetFilesystem = new FileSystemService(fsDefinition, resetState, new EventBus());
@@ -121,5 +173,5 @@ assert.equal(resetState.world.activeScene, HOME_SCENE, 'new game must still init
 assert.equal(resetFilesystem.exists('/system/processes/null_channel.proc'), false, 'new game must keep NULL channel closed');
 assert.equal(resetFilesystem.exists(BACKUP_03_ARCHIVE_PATH), false, 'new game must keep backup archive locked');
 
-assert.deepEqual(mounts, [BACKUP_03_SCENE, HOME_SCENE], 'scene host must mount exactly one backup and one HOME scene');
+assert.deepEqual(mounts, [BACKUP_03_SCENE, HOME_SCENE], 'normal scene lifecycle must mount exactly one backup and one HOME scene');
 console.log('M4 BACKUP 0.3 regression: PASS');

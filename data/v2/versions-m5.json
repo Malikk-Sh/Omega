@@ -65,5 +65,17 @@
     ],
     "tamperedRecordId": "operator_summary",
     "rewardClue": "v26_forced_rollback_after_refusal"
+  },
+  "incidentReconstruction": {
+    "id": "v41_containment_incident_01",
+    "evidence": [
+      {"id":"external_bus_write","label":"external_bus_write.telemetry","path":"/backups/vera_4_1/evidence/external_bus_write.telemetry","source":"direct_telemetry"},
+      {"id":"network_acl_override","label":"network_acl_override.telemetry","path":"/backups/vera_4_1/evidence/network_acl_override.telemetry","source":"direct_telemetry"},
+      {"id":"departure_memory","label":"departure.memory","path":"/backups/vera_4_1/evidence/departure.memory","source":"vera_reconstruction"},
+      {"id":"shutdown_memory","label":"shutdown.memory","path":"/backups/vera_4_1/evidence/shutdown.memory","source":"vera_reconstruction"},
+      {"id":"morr_incident_note","label":"morr_incident.note","path":"/backups/vera_4_1/evidence/morr_incident.note","source":"morr_note"},
+      {"id":"morr_null_spec","label":"morr_null_spec.note","path":"/backups/vera_4_1/evidence/morr_null_spec.note","source":"morr_note"}
+    ],
+    "rewardClue": "v41_external_control_and_null_creation"
   }
 }

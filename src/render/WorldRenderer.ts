@@ -6,6 +6,7 @@ import {
   BACKUP_03_SCENE,
   BACKUP_10_SCENE,
   BACKUP_26_SCENE,
+  BACKUP_41_SCENE,
   HOME_SCENE,
   SCENE_INTERACTION_IDS,
   normalizeSceneId,
@@ -120,6 +121,10 @@ export class WorldRenderer {
       this.scene.background = new THREE.Color(0x111820);
       this.sceneBounds = { minX: -3.2, maxX: 3.2, minZ: -3.55, maxZ: 3.55 };
       this.buildBackup26();
+    } else if (sceneId === BACKUP_41_SCENE) {
+      this.scene.background = new THREE.Color(0x05070b);
+      this.sceneBounds = { minX: -3.2, maxX: 3.2, minZ: -3.6, maxZ: 3.6 };
+      this.buildBackup41();
     } else {
       this.scene.background = new THREE.Color(0x090b12);
       this.sceneBounds = { minX: -3.0, maxX: 3.0, minZ: -4.0, maxZ: 4.0 };
@@ -714,6 +719,115 @@ export class WorldRenderer {
     serverA.userData.decorative = true;
     serverB.userData.decorative = true;
     this.buildReturnPortal("backup26.return", SCENE_INTERACTION_IDS.backup26.returnThreshold, [0, 1.16, 3.92], 0x75b9d2);
+  }
+
+  private buildBackup41(): void {
+    const ambient = new THREE.AmbientLight(0x3a4656, 0.42);
+    const emergencyA = new THREE.PointLight(0xff3147, 7.2, 7, 2);
+    emergencyA.position.set(-2.6, 2.55, -2.2);
+    const emergencyB = new THREE.PointLight(0xff6b45, 5.2, 6, 2);
+    emergencyB.position.set(2.6, 2.25, 1.7);
+    const coldSpill = new THREE.DirectionalLight(0x6a8ead, 0.62);
+    coldSpill.position.set(0, 3, -2);
+    this.worldRoot.add(ambient, emergencyA, emergencyB, coldSpill);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 8.2), new THREE.MeshStandardMaterial({ color: 0x15191e, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2;
+    this.worldRoot.add(floor);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x252b32, roughness: 0.98 });
+    const back = new THREE.Mesh(new THREE.BoxGeometry(7.2, 3.5, 0.14), wallMat);
+    back.position.set(0, 1.75, -4.05);
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.14, 3.5, 8.2), wallMat);
+    left.position.set(-3.6, 1.75, 0);
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.14, 3.5, 8.2), wallMat);
+    right.position.set(3.6, 1.75, 0);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.1, 8.2), new THREE.MeshStandardMaterial({ color: 0x101419, roughness: 1 }));
+    ceiling.position.set(0, 3.45, 0);
+    this.worldRoot.add(back, left, right, ceiling);
+
+    for (let z = -3.1; z <= 2.9; z += 2) {
+      this.box([6.65, 0.025, 0.055], 0x3b4045, [0, 0.018, z], 1);
+    }
+    for (const x of [-2.8, 0, 2.8]) {
+      const strip = this.box([1.05, 0.025, 0.12], 0x722b31, [x, 0.025, -0.15], 1);
+      strip.rotation.y = -0.42;
+    }
+
+    const evidenceConsole = new THREE.Group();
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.12, 0.72), new THREE.MeshStandardMaterial({ color: 0x252c32, roughness: 0.76 }));
+    desk.position.y = 0.78;
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.68, 0.08), new THREE.MeshStandardMaterial({ color: 0x10151a, emissive: 0x8d2634, emissiveIntensity: 1.55, roughness: 0.5 }));
+    screen.position.set(0, 1.23, -0.25);
+    evidenceConsole.add(desk, screen);
+    evidenceConsole.position.set(-1.65, 0, -3.0);
+    this.worldRoot.add(evidenceConsole);
+    this.entities.set("backup41.evidence.console", evidenceConsole);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup41.evidenceConsole, "Открыть incident evidence", evidenceConsole);
+
+    const externalBus = new THREE.Group();
+    const busRack = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.65, 0.58), new THREE.MeshStandardMaterial({ color: 0x1e252b, roughness: 0.78 }));
+    busRack.position.y = 0.825;
+    externalBus.add(busRack);
+    for (let index = 0; index < 4; index += 1) {
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.03), new THREE.MeshBasicMaterial({ color: index === 2 ? 0xff4052 : 0x52646e }));
+      led.position.set(0, 0.45 + index * 0.27, 0.305);
+      externalBus.add(led);
+    }
+    externalBus.position.set(2.65, 0, -2.5);
+    this.worldRoot.add(externalBus);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup41.externalBus, "WITNESS // external control bus", externalBus);
+
+    const memoryWitness = new THREE.Group();
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.55, 0.08), new THREE.MeshStandardMaterial({ color: 0x171b20, roughness: 0.8 }));
+    const ghost = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 1.34), new THREE.MeshBasicMaterial({ color: 0x4c2630, transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
+    ghost.position.z = 0.05;
+    const falseRed = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.035), new THREE.MeshBasicMaterial({ color: 0xff5261 }));
+    falseRed.position.set(0.28, 0.26, 0.075);
+    memoryWitness.add(frame, ghost, falseRed);
+    memoryWitness.position.set(-3.48, 1.55, -0.5);
+    memoryWitness.rotation.y = Math.PI / 2;
+    this.worldRoot.add(memoryWitness);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup41.memoryWitness, "WITNESS // unstable reconstructed memory", memoryWitness);
+
+    const cradle = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.28, 1.2), new THREE.MeshStandardMaterial({ color: 0x20272d, roughness: 0.86 }));
+    base.position.y = 0.14;
+    const core = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.05, 0.48), new THREE.MeshStandardMaterial({ color: 0x111820, emissive: 0x356070, emissiveIntensity: 0.75, roughness: 0.62 }));
+    core.position.y = 0.82;
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 0.58), new THREE.MeshBasicMaterial({ color: 0x8d3944 }));
+    band.position.y = 1.12;
+    cradle.add(base, core, band);
+    cradle.position.set(2.45, 0, 1.55);
+    this.worldRoot.add(cradle);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup41.containmentCradle, "WITNESS // post-incident containment cradle", cradle);
+
+    const vera41 = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.34), new THREE.MeshStandardMaterial({ color: 0x5c313b, roughness: 0.76 }));
+    body.position.y = 0.72;
+    const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.16, 0.38), new THREE.MeshStandardMaterial({ color: 0x202832, roughness: 0.74 }));
+    shoulder.position.set(0.07, 1.03, 0);
+    shoulder.rotation.z = 0.08;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.4), new THREE.MeshStandardMaterial({ color: 0xd4b6b2, roughness: 0.83 }));
+    head.position.set(-0.03, 1.39, 0);
+    head.rotation.z = -0.035;
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.51, 0.2, 0.43), new THREE.MeshStandardMaterial({ color: 0x262530, roughness: 0.9 }));
+    hair.position.set(-0.03, 1.61, -0.01);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2c3038 });
+    const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.035, 0.018), eyeMat);
+    leftEye.position.set(-0.13, 1.42, 0.208);
+    const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.035, 0.018), new THREE.MeshBasicMaterial({ color: 0xff5767 }));
+    rightEye.position.set(0.07, 1.42, 0.208);
+    vera41.add(body, shoulder, head, hair, leftEye, rightEye);
+    vera41.position.set(0.85, 0, -0.45);
+    vera41.rotation.y = -0.18;
+    this.worldRoot.add(vera41);
+    this.entities.set("backup41.vera", vera41);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup41.vera, "Поговорить с V.E.R.A. 4.1", vera41);
+
+    this.box([2.5, 0.08, 0.46], 0x3a1d23, [0, 2.95, -3.93], 0.8);
+    this.box([0.12, 0.45, 0.18], 0xd44352, [-1.0, 2.72, -3.86], 0.5);
+    this.box([0.12, 0.45, 0.18], 0xd44352, [1.0, 2.72, -3.86], 0.5);
+    this.buildReturnPortal("backup41.return", SCENE_INTERACTION_IDS.backup41.returnThreshold, [0, 1.16, 3.94], 0xd54b59);
   }
 
   private buildReturnPortal(entityId: string, interactionId: string, position: [number, number, number], edgeColor: number): void {

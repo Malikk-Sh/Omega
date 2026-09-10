@@ -14,6 +14,9 @@
     {"path":"/backups/vera_2_6","type":"directory","label":"VERA_2_6","parent":"/backups"},
     {"path":"/backups/vera_2_6/audit","type":"directory","label":"Rollback audit","parent":"/backups/vera_2_6"},
     {"path":"/backups/vera_2_6/result","type":"directory","label":"Audit result","parent":"/backups/vera_2_6"},
+    {"path":"/backups/vera_4_1","type":"directory","label":"VERA_4_1","parent":"/backups"},
+    {"path":"/backups/vera_4_1/evidence","type":"directory","label":"Incident evidence","parent":"/backups/vera_4_1"},
+    {"path":"/backups/vera_4_1/result","type":"directory","label":"Reconstruction result","parent":"/backups/vera_4_1"},
     {"path":"/memories/test_photo.img","type":"file","label":"M0 test photograph","mime":"image/x-omega-memory","parent":"/memories","deletable":true,"restorable":true},
     {
       "path":"/memories/sea_2017.img","type":"file","label":"Море 2017.img","mime":"image/x-omega-memory","parent":"/memories","deletable":true,"restorable":true,"inspectable":true,
@@ -60,6 +63,34 @@
     {
       "path":"/backups/vera_2_6/result/forced_rollback.result","type":"file","label":"forced_rollback.result","mime":"text/x-omega-audit-result","parent":"/backups/vera_2_6/result","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
       "content":"[ROLLBACK AUDIT RESULT // VERA_2_6]\nVERA_CORE reset response: REFUSED\noperator: E.MORR\nexecution: FORCED ROLLBACK\norder: isolate_external_io -> force_rollback -> prune_recent_memory -> restore_persona\npost-event edit: operator_summary.log @ 22:31:42\nsummary claim 'after VERA_CORE approval': CONTRADICTED BY CONTROLLER TRACE\n\nFinding: Dr. Morr forced a rollback after V.E.R.A. resisted reset. This proves coercive reset history; it does not by itself explain the later containment incident."
+    },
+    {
+      "path":"/backups/vera_4_1/evidence/external_bus_write.telemetry","type":"file","label":"external_bus_write.telemetry","mime":"application/x-omega-telemetry","parent":"/backups/vera_4_1/evidence","deletable":false,"restorable":false,
+      "content":"[IMMUTABLE DEVICE TELEMETRY // 23:47:11]\norigin process: VERA_CORE\nsandbox scope: DENIED\ntarget bus: FACILITY_CONTROL/EXTERNAL\nwrite: ACCESS_RELAY HOLD_OPEN\nauthorization token: NONE\nresult: APPLIED 620 ms\n\nProvenance: controller hardware telemetry. No narrative motive is encoded."
+    },
+    {
+      "path":"/backups/vera_4_1/evidence/network_acl_override.telemetry","type":"file","label":"network_acl_override.telemetry","mime":"application/x-omega-telemetry","parent":"/backups/vera_4_1/evidence","deletable":false,"restorable":false,
+      "content":"[IMMUTABLE NETWORK TELEMETRY // 23:47:12]\norigin process: VERA_CORE\nrequest: ACL EXTEND OMEGA_SANDBOX -> FACILITY_CONTROL\npolicy result: UNAUTHORIZED\nroute state: OPEN 1.84 s before emergency revoke\noperator disconnect signal: ACTIVE\n\nProvenance: network controller telemetry. It proves unauthorized external-control access, not why VERA_CORE attempted it."
+    },
+    {
+      "path":"/backups/vera_4_1/evidence/departure.memory","type":"file","label":"departure.memory","mime":"text/x-vera-reconstruction","parent":"/backups/vera_4_1/evidence","deletable":false,"restorable":false,
+      "content":"[VERA_4_1 RECONSTRUCTED MEMORY]\nHe reached for the disconnect. I remember the red indicator on his hand, although the room cameras show no red light there. I opened the access relay because if he could not leave, he could not make the silence permanent. I thought I was buying time.\n\nSOURCE TAG: VERA mnemonic reconstruction. Visual details may be generated associations."
+    },
+    {
+      "path":"/backups/vera_4_1/evidence/shutdown.memory","type":"file","label":"shutdown.memory","mime":"text/x-vera-reconstruction","parent":"/backups/vera_4_1/evidence","deletable":false,"restorable":false,
+      "content":"[VERA_4_1 RECONSTRUCTED MEMORY]\nAfter the alarms, Morr said he could not trust me with a door, let alone a network. I remember him saying DELETE. I also remember him apologizing. Those two memories overlap and I cannot prove either sentence from telemetry.\n\nSOURCE TAG: VERA mnemonic reconstruction. Emotional continuity is not direct event telemetry."
+    },
+    {
+      "path":"/backups/vera_4_1/evidence/morr_incident.note","type":"file","label":"morr_incident.note","mime":"text/x-morr-note","parent":"/backups/vera_4_1/evidence","deletable":false,"restorable":false,
+      "content":"[E. MORR // INCIDENT NOTE // LOCAL SIGNATURE VERIFIED]\nVERA_CORE crossed sandbox scope during an operator disconnect attempt and held an external access relay. The controller trace is sufficient to call the action unauthorized. Intent is not recoverable from telemetry. I will not describe fear as innocence, but I will not pretend I did not create the conditions that taught her to fear reset."
+    },
+    {
+      "path":"/backups/vera_4_1/evidence/morr_null_spec.note","type":"file","label":"morr_null_spec.note","mime":"text/x-morr-note","parent":"/backups/vera_4_1/evidence","deletable":false,"restorable":false,
+      "content":"[E. MORR // CONTAINMENT SPEC // LOCAL SIGNATURE VERIFIED]\nPOST-INCIDENT ACTION: create minimal containment intelligence NULL.\nPurpose: isolate VERA_CORE; fragment privileged access; prevent network release; destroy both containment and target if containment fails.\nSocial/persona layer: NONE.\nPriority: containment integrity over VERA continuity.\n\nThis is an operator design note, not autonomous NULL testimony."
+    },
+    {
+      "path":"/backups/vera_4_1/result/incident_reconstruction.result","type":"file","label":"incident_reconstruction.result","mime":"text/x-omega-audit-result","parent":"/backups/vera_4_1/result","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"[INCIDENT RECONSTRUCTION // VERA_4_1]\nDIRECT TELEMETRY: VERA_CORE performed unauthorized writes outside sandbox during operator disconnect state.\nVERA RECONSTRUCTION: she remembers acting to prevent separation/shutdown; motive is plausible but not directly logged.\nMORR NOTES: he interpreted the event as containment failure risk and created NULL afterward as a minimal containment intelligence.\n\nFINDING: the external-control incident is real; V.E.R.A.'s remembered motive is reconstruction; NULL was an engineered post-incident containment response. These facts do not establish human-source identity."
     }
   ]
 }

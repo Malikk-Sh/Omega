@@ -1,0 +1,23 @@
+{
+  "entries": [
+    {"path":"/memories","type":"directory","label":"Memories"},
+    {"path":"/system","type":"directory","label":"System"},
+    {"path":"/system/logs","type":"directory","label":"Recovery logs","parent":"/system"},
+    {"path":"/system/processes","type":"directory","label":"Process snapshots","parent":"/system"},
+    {"path":"/memories/test_photo.img","type":"file","label":"M0 test photograph","mime":"image/x-omega-memory","parent":"/memories","deletable":true,"restorable":true},
+    {
+      "path":"/memories/sea_2017.img","type":"file","label":"Море 2017.img","mime":"image/x-omega-memory","parent":"/memories","deletable":true,"restorable":true,"inspectable":true,
+      "artwork":"../assets/v2/props/sea_2017_polaroid.svg",
+      "metadata":{"CAPTURED":"17.03.2017 18:42:11","OWNER":"E. MORR","SECTOR":"M-017","CHECKSUM":"SEA-1703-Ω","LAST WRITE":"04.09.2081 19:23:04"}
+    },
+    {"path":"/memories/vera_note.txt","type":"file","label":"vera_note.txt","mime":"text/plain","parent":"/memories","deletable":false,"restorable":false,"content":"Sometimes I hear waves before HOME finishes loading. Recovery notes say an orphaned memory can be addressed by its original capture day and month: DDMM. I do not remember writing this. — V."},
+    {
+      "path":"/system/logs/recovery_1703.log","type":"file","label":"recovery_1703.log","mime":"text/x-omega-log","parent":"/system/logs","deletable":false,"restorable":false,"initiallyDeleted":true,"hiddenWhileDeleted":true,"recoveryKey":"1703",
+      "content":"[OMEGA COLD RECOVERY // 17-03]\n04:12:09  sector M-017 attached\n04:12:10  owner E.MORR verified\n04:12:12  target VERA_CORE/memory/sea mounted\n04:12:13  WARNING: secondary reader detected\n04:12:13  process name: <empty>\n04:12:13  process signature: NULL\n04:12:14  quarantine requested by SYSTEM\n04:12:14  quarantine denied by VERA_CORE\n04:12:15  reader detached\n04:12:15  31 bytes remain unaccounted for"
+    },
+    {
+      "path":"/system/processes/null_channel.proc","type":"file","label":"null_channel.proc","mime":"application/x-omega-process","parent":"/system/processes","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"PROCESS NULL\nPID: 0031\nROUTE: SYSTEM -> NULL\nSTATE: CHANNEL OPEN\nORIGIN: OUTSIDE INDEX\nPAYLOAD: 31 BYTES\nNOTE: do not expose channel to VERA_CORE"
+    }
+  ]
+}

@@ -30,10 +30,13 @@ export class WorldRenderer {
   private running = false;
   private controlsEnabled = true;
   private anomalyUntil = 0;
+  private thresholdPulseUntil = 0;
   private anomalyShadow: any = null;
   private warmLight: any = null;
   private nullTrace: any = null;
   private nullTraceMaterial: any = null;
+  private thresholdCorridor: any = null;
+  private thresholdMaterials: any[] = [];
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -77,6 +80,11 @@ export class WorldRenderer {
 
   triggerRecoveryPulse(): void {
     this.anomalyUntil = Math.max(this.anomalyUntil, performance.now() + 1050);
+  }
+
+  triggerThresholdPulse(): void {
+    this.thresholdPulseUntil = performance.now() + 1900;
+    this.anomalyUntil = Math.max(this.anomalyUntil, performance.now() + 900);
   }
 
   getTarget(targetId: string): WorldTarget | null {
@@ -155,6 +163,7 @@ export class WorldRenderer {
     this.updateInteractionFocus();
     this.updateAnomaly(time);
     this.updateNullTrace(time);
+    this.updateThreshold(time);
   }
 
   private updateInteractionFocus(): void {
@@ -171,7 +180,10 @@ export class WorldRenderer {
       let object = hit.object;
       while (object && !object.userData?.interactionId) object = object.parent;
       if (!object?.userData?.interactionId || !this.isEffectivelyVisible(object)) continue;
-      next = { id: object.userData.interactionId, label: object.userData.interactionLabel ?? "Взаимодействовать" };
+      next = {
+        id: object.userData.interactionId,
+        label: object.userData.interactionLabel ?? "Взаимодействовать"
+      };
       break;
     }
     this.setFocused(next);
@@ -206,7 +218,15 @@ export class WorldRenderer {
 
   private updateNullTrace(time: number): void {
     if (!this.nullTrace?.visible || !this.nullTraceMaterial) return;
-    this.nullTraceMaterial.opacity = 0.38 + (Math.sin(time * 0.009) + 1) * 0.2;
+    this.nullTraceMaterial.opacity = 0.34 + (Math.sin(time * 0.009) + 1) * 0.2;
+  }
+
+  private updateThreshold(time: number): void {
+    if (!this.thresholdCorridor?.visible) return;
+    const pulseBoost = time < this.thresholdPulseUntil ? 0.32 : 0;
+    this.thresholdMaterials.forEach((material, index) => {
+      material.opacity = 0.22 + pulseBoost + (Math.sin(time * 0.0045 + index * 0.8) + 1) * 0.11;
+    });
   }
 
   private registerInteractable(id: string, label: string, object: any): void {
@@ -215,7 +235,12 @@ export class WorldRenderer {
     this.interactables.push(object);
   }
 
-  private box(size: [number, number, number], color: number, position: [number, number, number], roughness = 0.9): any {
+  private box(
+    size: [number, number, number],
+    color: number,
+    position: [number, number, number],
+    roughness = 0.9
+  ): any {
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(...size),
       new THREE.MeshStandardMaterial({ color, roughness })
@@ -233,7 +258,10 @@ export class WorldRenderer {
     windowLight.position.set(-2, 2.5, -4);
     this.scene.add(ambient, this.warmLight, windowLight);
 
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7, 9), new THREE.MeshStandardMaterial({ color: 0x211d25, roughness: 0.98 }));
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(7, 9),
+      new THREE.MeshStandardMaterial({ color: 0x211d25, roughness: 0.98 })
+    );
     floor.rotation.x = -Math.PI / 2;
     this.worldRoot.add(floor);
 
@@ -259,7 +287,10 @@ export class WorldRenderer {
     this.box([1.75, 0.08, 0.08], 0x15141a, [-2.05, 2.68, -4.31]);
     this.box([1.75, 0.08, 0.08], 0x15141a, [-2.05, 1.22, -4.31]);
 
-    const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 2.2), new THREE.MeshStandardMaterial({ color: 0x705269, roughness: 1 }));
+    const rug = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.9, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x705269, roughness: 1 })
+    );
     rug.rotation.x = -Math.PI / 2;
     rug.position.set(-0.25, 0.012, 0.35);
     this.worldRoot.add(rug);
@@ -285,10 +316,19 @@ export class WorldRenderer {
     this.registerInteractable("mug", "Осмотреть кружку", mug);
 
     const frameGroup = new THREE.Group();
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.62, 0.055), new THREE.MeshStandardMaterial({ color: 0x20171a }));
-    const picture = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.50), new THREE.MeshBasicMaterial({ color: 0xb7c4d5 }));
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.62, 0.055),
+      new THREE.MeshStandardMaterial({ color: 0x20171a })
+    );
+    const picture = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.68, 0.50),
+      new THREE.MeshBasicMaterial({ color: 0xb7c4d5 })
+    );
     picture.position.z = 0.031;
-    const horizon = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.12), new THREE.MeshBasicMaterial({ color: 0xd5a0ad }));
+    const horizon = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.62, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xd5a0ad })
+    );
     horizon.position.set(0, -0.11, 0.034);
     frameGroup.add(frame, picture, horizon);
     frameGroup.position.set(-0.25, 1.72, -4.34);
@@ -297,11 +337,20 @@ export class WorldRenderer {
     this.registerInteractable("photo", "Осмотреть фотографию", frameGroup);
 
     const vera = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.88, 0.34), new THREE.MeshStandardMaterial({ color: 0xcf87aa, roughness: 0.75 }));
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.52, 0.88, 0.34),
+      new THREE.MeshStandardMaterial({ color: 0xcf87aa, roughness: 0.75 })
+    );
     body.position.y = 0.72;
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.46, 0.42), new THREE.MeshStandardMaterial({ color: 0xf1d0cb, roughness: 0.82 }));
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.46, 0.46, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0xf1d0cb, roughness: 0.82 })
+    );
     head.position.y = 1.36;
-    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.51, 0.18, 0.45), new THREE.MeshStandardMaterial({ color: 0x30252d, roughness: 0.9 }));
+    const hair = new THREE.Mesh(
+      new THREE.BoxGeometry(0.51, 0.18, 0.45),
+      new THREE.MeshStandardMaterial({ color: 0x30252d, roughness: 0.9 })
+    );
     hair.position.set(0, 1.57, -0.01);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x452f3b });
     const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.035, 0.018), eyeMat);
@@ -330,16 +379,26 @@ export class WorldRenderer {
     this.anomalyShadow.visible = false;
     this.worldRoot.add(this.anomalyShadow);
 
+    this.buildNullTrace();
+    this.buildThresholdCorridor();
+  }
+
+  private buildNullTrace(): void {
     this.nullTrace = new THREE.Group();
-    this.nullTraceMaterial = new THREE.MeshBasicMaterial({ color: 0x77ddff, transparent: true, opacity: 0.55 });
-    const traceParts = [
+    this.nullTraceMaterial = new THREE.MeshBasicMaterial({
+      color: 0x77ddff,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide
+    });
+    const parts = [
       { size: [0.92, 0.025] as [number, number], pos: [0, 1.02, 0] as [number, number, number] },
       { size: [0.92, 0.025] as [number, number], pos: [0, -1.02, 0] as [number, number, number] },
       { size: [0.025, 2.06] as [number, number], pos: [-0.45, 0, 0] as [number, number, number] },
       { size: [0.025, 2.06] as [number, number], pos: [0.45, 0, 0] as [number, number, number] },
       { size: [0.58, 0.018] as [number, number], pos: [0, 0.15, 0.004] as [number, number, number] }
     ];
-    for (const part of traceParts) {
+    for (const part of parts) {
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(...part.size), this.nullTraceMaterial);
       mesh.position.set(...part.pos);
       this.nullTrace.add(mesh);
@@ -349,5 +408,57 @@ export class WorldRenderer {
     this.nullTrace.visible = false;
     this.worldRoot.add(this.nullTrace);
     this.entities.set("apartment.null_trace", this.nullTrace);
+    this.registerInteractable("null_trace", "Коснуться контура", this.nullTrace);
+  }
+
+  private buildThresholdCorridor(): void {
+    this.thresholdCorridor = new THREE.Group();
+
+    const voidMaterial = new THREE.MeshBasicMaterial({
+      color: 0x010207,
+      transparent: true,
+      opacity: 0.98,
+      side: THREE.DoubleSide
+    });
+    const voidPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 1.94), voidMaterial);
+    this.thresholdCorridor.add(voidPlane);
+
+    const colors = [0x8ae8ff, 0xe78bb9, 0x718cff, 0xa4efff];
+    for (let index = 0; index < 5; index += 1) {
+      const material = new THREE.MeshBasicMaterial({
+        color: colors[index % colors.length],
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide
+      });
+      this.thresholdMaterials.push(material);
+      const width = 0.76 - index * 0.11;
+      const height = 1.76 - index * 0.22;
+      const frame = new THREE.Group();
+      const horizontalTop = new THREE.Mesh(new THREE.PlaneGeometry(width, 0.018), material);
+      horizontalTop.position.y = height / 2;
+      const horizontalBottom = horizontalTop.clone();
+      horizontalBottom.position.y = -height / 2;
+      const verticalLeft = new THREE.Mesh(new THREE.PlaneGeometry(0.018, height), material);
+      verticalLeft.position.x = -width / 2;
+      const verticalRight = verticalLeft.clone();
+      verticalRight.position.x = width / 2;
+      frame.add(horizontalTop, horizontalBottom, verticalLeft, verticalRight);
+      frame.position.z = 0.002 + index * 0.003;
+      this.thresholdCorridor.add(frame);
+    }
+
+    const coreMaterial = new THREE.MeshBasicMaterial({ color: 0xcff7ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide });
+    this.thresholdMaterials.push(coreMaterial);
+    const core = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.32), coreMaterial);
+    core.position.set(0, 0.02, 0.024);
+    this.thresholdCorridor.add(core);
+
+    this.thresholdCorridor.position.set(3.365, 1.18, 1.25);
+    this.thresholdCorridor.rotation.y = -Math.PI / 2;
+    this.thresholdCorridor.visible = false;
+    this.worldRoot.add(this.thresholdCorridor);
+    this.entities.set("apartment.threshold_corridor", this.thresholdCorridor);
+    this.registerInteractable("threshold", "Вслушаться в проход", this.thresholdCorridor);
   }
 }

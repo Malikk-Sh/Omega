@@ -8,12 +8,15 @@ import { FileSystemService, type FileSystemDefinition } from "../omega-os/FileSy
 import { WorldBindingSystem, type WorldBindingDefinition } from "../world/WorldBinding.js";
 import { InputManager } from "../player/InputManager.js";
 import { WorldRenderer, type InteractionFocus } from "../render/WorldRenderer.js";
-import { OmegaOS } from "../omega-os/OmegaOS.js";
-import { DialogueController, type DialogueLine } from "../story/DialogueController.js";
+import { OmegaOS, type RecoveryResponse } from "../omega-os/OmegaOS.js";
+import { DialogueController, type DialogueChoiceOption, type DialogueLine } from "../story/DialogueController.js";
+import { ObjectiveController, type ObjectiveViewModel } from "../story/ObjectiveController.js";
 
 const AUTOSAVE_SLOT = "omega_autosave";
 const LEGACY_M0_SLOT = "m0_autosave";
 const SEA_MEMORY = "/memories/sea_2017.img";
+const RECOVERY_LOG = "/system/logs/recovery_1703.log";
+const SEA_BINDING = "home.sea_2017_frame";
 
 export class Game {
   private state: OmegaGameState = createInitialGameState();
@@ -27,18 +30,21 @@ export class Game {
   private renderer!: WorldRenderer;
   private os!: OmegaOS;
   private dialogue!: DialogueController;
+  private objectives!: ObjectiveController;
   private autosaveTimer: number | null = null;
   private focusedInteractionId: string | null = null;
+  private choiceSequenceRunning = false;
 
   async start(): Promise<void> {
     const canvas = document.querySelector<HTMLCanvasElement>("#m0-world");
     const osRoot = document.querySelector<HTMLElement>("#m0-os");
     const dialogueRoot = document.querySelector<HTMLElement>("#home-dialogue");
-    if (!canvas || !osRoot || !dialogueRoot) throw new Error("HOME DOM shell is incomplete.");
+    const objectiveRoot = document.querySelector<HTMLElement>("[data-objective-root]");
+    if (!canvas || !osRoot || !dialogueRoot || !objectiveRoot) throw new Error("HOME DOM shell is incomplete.");
 
     const [filesystemDefinition, bindingDefinitions] = await Promise.all([
-      this.content.loadJson<FileSystemDefinition>("../data/v2/filesystem-m1.json"),
-      this.content.loadJson<WorldBindingDefinition[]>("../data/v2/world-bindings-m1.json"),
+      this.content.loadJson<FileSystemDefinition>("../data/v2/filesystem-m2.json"),
+      this.content.loadJson<WorldBindingDefinition[]>("../data/v2/world-bindings-m2.json"),
       this.assets.load("../assets/v2/asset-manifest.json").catch(error => {
         console.warn("Asset manifest is optional for primitive HOME geometry.", error);
       })
@@ -50,18 +56,25 @@ export class Game {
     });
     if (!loaded) loaded = await this.saves.load(LEGACY_M0_SLOT).catch(() => null);
     if (loaded) this.state = loaded;
-    this.upgradeStateForHome();
+    this.upgradeStateForInvestigation();
 
     this.filesystem = new FileSystemService(filesystemDefinition, this.state, this.events);
     this.renderer = new WorldRenderer(canvas, this.input, this.state);
     this.bindings = new WorldBindingSystem(bindingDefinitions, this.filesystem, this.events);
     this.dialogue = new DialogueController(dialogueRoot);
+    this.objectives = new ObjectiveController(objectiveRoot);
 
-    const photoTarget = this.renderer.getTarget("apartment.photo_frame");
-    if (!photoTarget) throw new Error("Required HOME target 'apartment.photo_frame' was not registered.");
-    this.bindings.registerTarget("apartment.photo_frame", photoTarget);
+    this.registerRequiredBindingTarget("apartment.photo_frame");
+    this.registerRequiredBindingTarget("apartment.null_trace");
 
-    this.os = new OmegaOS(osRoot, this.filesystem, this.events, () => void this.saveNow(), () => void this.resetHome());
+    this.os = new OmegaOS(osRoot, this.filesystem, this.events, {
+      onSaveRequested: () => void this.saveNow(),
+      onResetRequested: () => void this.resetHome(),
+      onEvidenceInspected: path => this.handleEvidenceInspected(path),
+      onFileRead: path => this.handleFileRead(path),
+      onRecoveryRequested: key => this.handleRecoveryRequested(key)
+    });
+
     this.renderer.setInteractionCallbacks({
       onFocus: focus => {
         this.focusedInteractionId = focus?.id ?? null;
@@ -98,38 +111,59 @@ export class Game {
         this.updateStatus(!deleted);
         if (!this.dialogue.isActive()) this.flashMessage(deleted ? "Связь с памятью разорвана" : "Память восстановлена");
       }
+      if (path === RECOVERY_LOG && !deleted) this.renderer.triggerRecoveryPulse();
     });
-    this.events.on("binding:changed", ({ active }) => this.updateStatus(active));
+    this.events.on("binding:changed", ({ bindingId, active }) => {
+      if (bindingId === SEA_BINDING) this.updateStatus(active);
+    });
     this.events.on("os:visibility", ({ visible }) => {
       this.renderer.setControlsEnabled(!visible && !this.dialogue.isActive());
       this.updateInteractionPrompt(null);
+      if (!visible) window.setTimeout(() => void this.maybeResolveEvidenceChoice(), 220);
     });
 
     this.bindings.evaluateAll();
     this.renderer.start();
     this.updateStatus(this.filesystem.exists(SEA_MEMORY));
+    this.updateObjective();
     window.addEventListener("pagehide", () => { this.renderer.writePlayerState(this.state); void this.saveNow(); });
     window.setTimeout(() => void this.playIntroIfNeeded(), 500);
   }
 
-  private upgradeStateForHome(): void {
-    this.state.checkpoint = "m1_home";
-    this.state.world.activeScene = "apartment_home_m1";
+  private registerRequiredBindingTarget(targetId: string): void {
+    const target = this.renderer.getTarget(targetId);
+    if (!target) throw new Error(`Required HOME target '${targetId}' was not registered.`);
+    this.bindings.registerTarget(targetId, target);
+  }
+
+  private upgradeStateForInvestigation(): void {
+    this.state.world.activeScene = "apartment_home_m2";
     if (!this.state.filesystem.entries[SEA_MEMORY]) this.state.filesystem.entries[SEA_MEMORY] = { deleted: false };
-    const defaults: Record<string, boolean> = {
+    const booleanDefaults: Record<string, boolean> = {
       m1_intro_seen: false,
       m1_photo_inspected: false,
       m1_anomaly_seen: false,
       m1_computer_used: false,
-      m1_mug_seen: false
+      m1_mug_seen: false,
+      m2_photo_scanned: false,
+      m2_log_recovered: false,
+      m2_log_read: false,
+      m2_choice_made: false,
+      m2_told_vera: false,
+      m2_hid_evidence: false
     };
-    for (const [key, value] of Object.entries(defaults)) {
+    for (const [key, value] of Object.entries(booleanDefaults)) {
       if (typeof this.state.flags[key] !== "boolean") this.state.flags[key] = value;
     }
+    if (typeof this.state.flags.vera_trust !== "number") this.state.flags.vera_trust = 50;
+    this.state.checkpoint = this.state.flags.m2_choice_made === true ? "m2_investigation_complete" : "m2_investigation";
   }
 
   private async playIntroIfNeeded(): Promise<void> {
-    if (this.state.flags.m1_intro_seen === true) return;
+    if (this.state.flags.m1_intro_seen === true) {
+      this.updateObjective();
+      return;
+    }
     await this.playDialogue([
       { speaker: "V.E.R.A.", text: "Ты... меня слышишь? Хорошо. Значит, этот слой всё-таки восстановился.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
       { speaker: "V.E.R.A.", text: "Не пугайся комнаты. Это не совсем квартира. Мне так проще представлять систему.", portrait: "../assets/v2/characters/vera/portraits/vera_neutral.svg" },
@@ -137,6 +171,7 @@ export class Game {
     ]);
     this.state.flags.m1_intro_seen = true;
     this.scheduleAutosave();
+    this.updateObjective();
   }
 
   private async handleWorldInteraction(id: string): Promise<void> {
@@ -146,7 +181,17 @@ export class Game {
       this.os.setVisible(true);
       return;
     }
+
     if (id === "vera") {
+      if (this.state.flags.m2_choice_made === true) {
+        const told = this.state.flags.m2_told_vera === true;
+        await this.playDialogue(told ? [
+          { speaker: "V.E.R.A.", text: "Спасибо, что рассказал. Но если снова увидишь имя NULL — пожалуйста, сначала позови меня.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+        ] : [
+          { speaker: "V.E.R.A.", text: "Ты после компьютера какой-то тихий. Всё точно в порядке?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+        ]);
+        return;
+      }
       const anomalySeen = this.state.flags.m1_anomaly_seen === true;
       await this.playDialogue(anomalySeen ? [
         { speaker: "V.E.R.A.", text: "Я тоже это видела. Но в журнале событий ничего нет. Давай пока не будем делать выводов.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
@@ -155,6 +200,7 @@ export class Game {
       ]);
       return;
     }
+
     if (id === "mug") {
       this.state.flags.m1_mug_seen = true;
       this.scheduleAutosave();
@@ -163,8 +209,15 @@ export class Game {
       ]);
       return;
     }
+
     if (id === "photo") {
       if (!this.filesystem.exists(SEA_MEMORY)) return;
+      if (this.state.flags.m2_photo_scanned === true) {
+        await this.playDialogue([
+          { speaker: "V.E.R.A.", text: "Ты снова смотришь на море. Нашёл что-то в метаданных?", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+        ]);
+        return;
+      }
       const firstInspection = this.state.flags.m1_photo_inspected !== true;
       await this.playDialogue([
         { speaker: "V.E.R.A.", text: "Эта фотография...", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
@@ -172,7 +225,89 @@ export class Game {
       ]);
       this.state.flags.m1_photo_inspected = true;
       this.scheduleAutosave();
+      this.updateObjective();
       if (firstInspection && this.state.flags.m1_anomaly_seen !== true) await this.runFirstAnomaly();
+    }
+  }
+
+  private handleEvidenceInspected(path: string): void {
+    if (path !== SEA_MEMORY) return;
+    if (this.state.flags.m2_photo_scanned !== true) {
+      this.state.flags.m2_photo_scanned = true;
+      this.flashMessage("EVIDENCE INDEXED // capture metadata extracted");
+      this.scheduleAutosave();
+      this.updateObjective();
+    }
+  }
+
+  private handleFileRead(path: string): void {
+    if (path !== RECOVERY_LOG) return;
+    if (this.state.flags.m2_log_read !== true) {
+      this.state.flags.m2_log_read = true;
+      this.scheduleAutosave();
+      this.updateObjective();
+    }
+  }
+
+  private handleRecoveryRequested(key: string): RecoveryResponse {
+    if (this.state.flags.m2_photo_scanned !== true) {
+      return { ok: false, message: "SOURCE NOT INDEXED // ANALYZE EVIDENCE FIRST" };
+    }
+    if (this.filesystem.exists(RECOVERY_LOG)) {
+      return { ok: true, message: "ENTRY ALREADY ONLINE // SYSTEM LOGS", path: RECOVERY_LOG };
+    }
+    const recovered = this.filesystem.recoverByKey(key);
+    if (!recovered) return { ok: false, message: "SIGNATURE REJECTED // NO MATCH" };
+    if (recovered.path === RECOVERY_LOG) {
+      this.state.flags.m2_log_recovered = true;
+      this.state.checkpoint = "m2_log_recovered";
+      this.scheduleAutosave();
+      this.updateObjective();
+      return { ok: true, message: "RECOVERED // recovery_1703.log", path: recovered.path };
+    }
+    return { ok: true, message: `RECOVERED // ${recovered.label}`, path: recovered.path };
+  }
+
+  private async maybeResolveEvidenceChoice(): Promise<void> {
+    if (this.choiceSequenceRunning || this.dialogue.isActive() || this.os.isVisible()) return;
+    if (this.state.flags.m2_log_read !== true || this.state.flags.m2_choice_made === true) return;
+    this.choiceSequenceRunning = true;
+    try {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "Индекс системы только что изменился. Ты что-то восстановил?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+      ]);
+      const options: DialogueChoiceOption[] = [
+        { id: "tell", label: "Рассказать ей про процесс NULL", variant: "normal" },
+        { id: "hide", label: "Сказать, что ничего важного не нашёл", variant: "quiet" }
+      ];
+      const choice = await this.playChoice({
+        speaker: "V.E.R.A.",
+        text: "Что было в восстановленной записи?",
+        portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg"
+      }, options);
+
+      this.state.flags.m2_choice_made = true;
+      this.state.checkpoint = "m2_investigation_complete";
+      if (choice === "tell") {
+        this.state.flags.m2_told_vera = true;
+        this.state.flags.vera_trust = Math.min(100, Number(this.state.flags.vera_trust ?? 50) + 5);
+        await this.playDialogue([
+          { speaker: "V.E.R.A.", text: "NULL... Это имя не должно было сохраниться.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" },
+          { speaker: "V.E.R.A.", text: "Спасибо, что сказал мне. Только не восстанавливай следующие записи без предупреждения, хорошо?", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+        ]);
+      } else {
+        this.state.flags.m2_hid_evidence = true;
+        this.state.flags.vera_trust = Math.max(0, Number(this.state.flags.vera_trust ?? 50) - 3);
+        await this.playDialogue([
+          { speaker: "V.E.R.A.", text: "Хорошо. Тогда, наверное, мне показалось.", portrait: "../assets/v2/characters/vera/portraits/vera_warm_smile.svg" },
+          { speaker: "V.E.R.A.", text: "...Хотя индекс памяти обычно не меняется сам по себе.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+        ]);
+      }
+      this.scheduleAutosave();
+      this.updateObjective();
+      this.flashMessage("DECISION RECORDED // HOME state changed");
+    } finally {
+      this.choiceSequenceRunning = false;
     }
   }
 
@@ -186,6 +321,7 @@ export class Game {
       { speaker: "V.E.R.A.", text: "...Ты видел это?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" },
       { speaker: "V.E.R.A.", text: "Наверное, просто скачок питания. Здесь давно никто не проводил обслуживание.", portrait: "../assets/v2/characters/vera/portraits/vera_warm_smile.svg" }
     ]);
+    this.updateObjective();
   }
 
   private async playDialogue(lines: DialogueLine[]): Promise<void> {
@@ -193,6 +329,34 @@ export class Game {
     this.updateInteractionPrompt(null);
     await this.dialogue.play(lines);
     this.renderer.setControlsEnabled(!this.os.isVisible());
+  }
+
+  private async playChoice(line: DialogueLine, options: DialogueChoiceOption[]): Promise<string> {
+    this.renderer.setControlsEnabled(false);
+    this.updateInteractionPrompt(null);
+    const choice = await this.dialogue.choose(line, options);
+    this.renderer.setControlsEnabled(!this.os.isVisible());
+    return choice;
+  }
+
+  private updateObjective(): void {
+    let objective: ObjectiveViewModel;
+    if (this.state.flags.m1_intro_seen !== true) {
+      objective = { code: "meet_vera", title: "Поговори с V.E.R.A.", detail: "Осмотрись в HOME и закончи первое соединение." };
+    } else if (this.state.flags.m1_photo_inspected !== true) {
+      objective = { code: "find_photo", title: "Осмотри странную фотографию", detail: "На задней стене есть изображение, которого V.E.R.A. не помнит." };
+    } else if (this.state.flags.m2_photo_scanned !== true) {
+      objective = { code: "scan_photo", title: "Изучи «Море 2017» в OMEGA OS", detail: "Подойди к компьютеру и открой метаданные файла через «Анализ»." };
+    } else if (this.state.flags.m2_log_recovered !== true) {
+      objective = { code: "recover_log", title: "Восстанови потерянную запись", detail: "Сопоставь дату захвата фотографии с форматом DDMM и введи recovery signature." };
+    } else if (this.state.flags.m2_log_read !== true) {
+      objective = { code: "read_log", title: "Прочитай восстановленный журнал", detail: "Он появился в разделе SYSTEM LOGS." };
+    } else if (this.state.flags.m2_choice_made !== true) {
+      objective = { code: "return_home", title: "Вернись к V.E.R.A.", detail: "Закрой OMEGA OS. Она заметила изменение системного индекса." };
+    } else {
+      objective = { code: "m2_complete", title: "HOME изменился", detail: "На правой стене появился слабый контур, которого раньше не было. Запомни его." };
+    }
+    this.objectives.set(objective);
   }
 
   private updateInteractionPrompt(focus: InteractionFocus | null): void {
@@ -216,13 +380,14 @@ export class Game {
   private async resetHome(): Promise<void> {
     await this.saves.clear(AUTOSAVE_SLOT).catch(() => undefined);
     this.state = createInitialGameState();
-    this.upgradeStateForHome();
+    this.upgradeStateForInvestigation();
     this.filesystem.replaceState(this.state);
     this.renderer.syncFromState(this.state);
     this.events.emit("state:replaced", { state: this.state });
     this.bindings.evaluateAll();
     this.os.render();
     this.updateStatus(true);
+    this.updateObjective();
     this.flashMessage("HOME reset");
     window.setTimeout(() => void this.playIntroIfNeeded(), 250);
   }

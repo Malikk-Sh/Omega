@@ -8,12 +8,21 @@ export interface RecoveryResponse {
   path?: string;
 }
 
+export interface ProcessMonitorState {
+  unlocked: boolean;
+  channelOpen: boolean;
+  routeAttempts: number;
+  message?: string;
+}
+
 export interface OmegaOSCallbacks {
   onSaveRequested: () => void;
   onResetRequested: () => void;
   onEvidenceInspected?: (path: string) => void;
   onFileRead?: (path: string) => void;
   onRecoveryRequested?: (key: string) => RecoveryResponse;
+  getProcessMonitorState?: () => ProcessMonitorState;
+  onProcessRouteRequested?: (route: string) => RecoveryResponse;
 }
 
 type PreviewMode = "text" | "evidence";
@@ -24,6 +33,7 @@ export class OmegaOS {
   private previewMode: PreviewMode = "text";
   private currentDirectory = "/memories";
   private recoveryMessage = "";
+  private processMessage = "";
   private readonly subscriptions: Unsubscribe[] = [];
 
   constructor(
@@ -48,10 +58,21 @@ export class OmegaOS {
   toggle(): void { this.setVisible(!this.visible); }
 
   render(): void {
+    const processState = this.callbacks.getProcessMonitorState?.() ?? {
+      unlocked: false,
+      channelOpen: false,
+      routeAttempts: 0
+    };
+    if (this.currentDirectory === "/system/processes" && !processState.unlocked) {
+      this.currentDirectory = "/system/logs";
+    }
+
     const entries = this.filesystem.listDirectory(this.currentDirectory, true);
     const preview = this.previewPath ? this.filesystem.readFile(this.previewPath) : null;
+    const inProcessMonitor = this.currentDirectory === "/system/processes";
+
     this.root.innerHTML = `
-      <section class="m0-os-window m2-os-window" role="dialog" aria-label="OMEGA OS">
+      <section class="m0-os-window m2-os-window m3-os-window" role="dialog" aria-label="OMEGA OS">
         <header class="m0-os-header">
           <div><strong>Ω OMEGA OS</strong><small>INVESTIGATION WORKSPACE / HOME</small></div>
           <button class="m0-icon-btn" type="button" data-os-close aria-label="Закрыть OMEGA OS">×</button>
@@ -60,39 +81,55 @@ export class OmegaOS {
         <nav class="m2-os-nav" aria-label="OMEGA directories">
           ${this.renderDirectoryButton("/memories", "MEMORY")}
           ${this.renderDirectoryButton("/system/logs", "SYSTEM LOGS")}
+          ${processState.unlocked ? this.renderDirectoryButton("/system/processes", "PROCESS") : ""}
         </nav>
 
         <div class="m0-os-toolbar m2-os-toolbar">
-          <span>Explorer</span><code>${this.escape(this.currentDirectory)}</code>
+          <span>${inProcessMonitor ? "Process Monitor" : "Explorer"}</span><code>${this.escape(this.currentDirectory)}</code>
           <div class="m2-toolbar-actions">
             <button type="button" data-os-save>Сохранить</button>
             <button type="button" data-os-reset>Сбросить HOME</button>
           </div>
         </div>
 
-        <main class="m0-file-list m2-file-list">
-          ${entries.length ? entries.map(entry => this.renderEntry(entry)).join("") : `<div class="m2-empty-directory"><strong>NO INDEXED FILES</strong><span>В этом разделе пока нет доступных записей.</span></div>`}
-        </main>
+        ${inProcessMonitor ? this.renderProcessMonitor(processState, entries) : `
+          <main class="m0-file-list m2-file-list">
+            ${entries.length ? entries.map(entry => this.renderEntry(entry)).join("") : `<div class="m2-empty-directory"><strong>NO INDEXED FILES</strong><span>В этом разделе пока нет доступных записей.</span></div>`}
+          </main>
+        `}
 
         ${preview ? this.renderPreview(preview) : ""}
 
-        <section class="m2-recovery" aria-label="Recovery console">
-          <header><div><strong>RECOVERY CONSOLE</strong><small>COLD INDEX / MANUAL SIGNATURE</small></div><span>ΩRC</span></header>
-          <p>Повреждённые записи можно адресовать короткой recovery signature. Консоль принимает 4 символа.</p>
-          <form data-recovery-form>
-            <input data-recovery-key inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Recovery signature" placeholder="••••">
-            <button type="submit">RECOVER</button>
-          </form>
-          <output class="m2-recovery-output" data-recovery-output>${this.escape(this.recoveryMessage || "WAITING FOR SIGNATURE")}</output>
-        </section>
+        ${inProcessMonitor ? "" : `
+          <section class="m2-recovery" aria-label="Recovery console">
+            <header><div><strong>RECOVERY CONSOLE</strong><small>COLD INDEX / MANUAL SIGNATURE</small></div><span>ΩRC</span></header>
+            <p>Повреждённые записи можно адресовать короткой recovery signature. Консоль принимает 4 символа.</p>
+            <form data-recovery-form>
+              <input data-recovery-key inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Recovery signature" placeholder="••••">
+              <button type="submit">RECOVER</button>
+            </form>
+            <output class="m2-recovery-output" data-recovery-output>${this.escape(this.recoveryMessage || "WAITING FOR SIGNATURE")}</output>
+          </section>
+        `}
 
-        <footer class="m0-os-status">HOME отражает состояние индексированных файлов. Не все изменения обратимы.</footer>
+        <footer class="m0-os-status">${inProcessMonitor ? "PROCESS view is reconstructed from cold-index evidence. Route changes may alter HOME." : "HOME отражает состояние индексированных файлов. Не все изменения обратимы."}</footer>
       </section>`;
 
+    this.bindEvents();
+  }
+
+  destroy(): void {
+    for (const unsubscribe of this.subscriptions.splice(0)) unsubscribe();
+  }
+
+  private bindEvents(): void {
     this.root.querySelector<HTMLElement>("[data-os-close]")?.addEventListener("click", () => this.setVisible(false));
     this.root.querySelector<HTMLElement>("[data-os-save]")?.addEventListener("click", this.callbacks.onSaveRequested);
     this.root.querySelector<HTMLElement>("[data-os-reset]")?.addEventListener("click", this.callbacks.onResetRequested);
-    this.root.querySelector<HTMLElement>("[data-preview-close]")?.addEventListener("click", () => { this.previewPath = null; this.render(); });
+    this.root.querySelector<HTMLElement>("[data-preview-close]")?.addEventListener("click", () => {
+      this.previewPath = null;
+      this.render();
+    });
 
     this.root.querySelectorAll<HTMLElement>("[data-os-directory]").forEach(button => {
       button.addEventListener("click", () => {
@@ -135,10 +172,19 @@ export class OmegaOS {
       }
       this.render();
     });
-  }
 
-  destroy(): void {
-    for (const unsubscribe of this.subscriptions.splice(0)) unsubscribe();
+    this.root.querySelectorAll<HTMLElement>("[data-process-route]").forEach(button => {
+      button.addEventListener("click", () => {
+        const route = button.dataset.processRoute ?? "";
+        const result = this.callbacks.onProcessRouteRequested?.(route) ?? {
+          ok: false,
+          message: "PROCESS ROUTER OFFLINE"
+        };
+        this.processMessage = result.message;
+        this.previewPath = null;
+        this.render();
+      });
+    });
   }
 
   private renderDirectoryButton(path: string, label: string): string {
@@ -155,7 +201,7 @@ export class OmegaOS {
     if (deleted && entry.type === "file" && entry.restorable !== false) actions.push(this.actionButton("restore", entry.path, "Восстановить"));
 
     return `<article class="m0-file m2-file ${deleted ? "is-deleted" : ""}">
-      <div class="m0-file-icon">${deleted ? "□" : entry.mime === "text/plain" || entry.mime?.includes("log") ? "≡" : "▣"}</div>
+      <div class="m0-file-icon">${deleted ? "□" : entry.mime === "text/plain" || entry.mime?.includes("log") ? "≡" : entry.mime?.includes("process") ? "⌁" : "▣"}</div>
       <div class="m0-file-copy">
         <strong>${this.escape(entry.label)}</strong>
         <code>${this.escape(entry.path)}</code>
@@ -190,6 +236,38 @@ export class OmegaOS {
         </div>
       </div>
     </aside>`;
+  }
+
+  private renderProcessMonitor(state: ProcessMonitorState, entries: VirtualEntry[]): string {
+    const channel = entries.find(entry => entry.path.endsWith("null_channel.proc") && !entry.deleted);
+    return `<main class="m3-process-monitor">
+      <section class="m3-process-card ${state.channelOpen ? "is-open" : "is-quarantined"}">
+        <header>
+          <div><strong>PROCESS // NULL</strong><small>UNINDEXED SECONDARY READER</small></div>
+          <span>${state.channelOpen ? "CHANNEL OPEN" : "QUARANTINED"}</span>
+        </header>
+        <div class="m3-process-grid">
+          <div><small>PID</small><code>0031</code></div>
+          <div><small>SIGNATURE</small><code>NULL</code></div>
+          <div><small>LAST EVENT</small><code>04:12:14</code></div>
+          <div><small>BYTES LOST</small><code>31</code></div>
+        </div>
+        ${state.channelOpen ? `
+          <div class="m3-route-open"><strong>ROUTE RECONSTRUCTED</strong><code>SYSTEM → NULL</code><span>HOME topology changed.</span></div>
+          ${channel ? this.renderEntry(channel) : ""}
+        ` : `
+          <div class="m3-route-puzzle">
+            <p>Восстанови инициатора quarantine request по журналу `recovery_1703.log`. VERA_CORE отклонила запрос — она не была источником.</p>
+            <div class="m3-route-options">
+              <button type="button" data-process-route="vera">VERA_CORE → NULL</button>
+              <button type="button" data-process-route="system">SYSTEM → NULL</button>
+              <button type="button" data-process-route="null">NULL → SYSTEM</button>
+            </div>
+          </div>
+        `}
+        <output class="m3-process-output">${this.escape(this.processMessage || state.message || (state.channelOpen ? "LINK STABLE // LISTENING" : "ROUTE REQUIRED"))}</output>
+      </section>
+    </main>`;
   }
 
   private escape(value: string): string {

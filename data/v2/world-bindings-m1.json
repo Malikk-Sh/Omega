@@ -1,0 +1,7 @@
+[
+  {
+    "id": "home.sea_2017_frame",
+    "source": { "type": "fileExists", "path": "/memories/sea_2017.img" },
+    "target": { "id": "apartment.photo_frame", "property": "visible" }
+  }
+]

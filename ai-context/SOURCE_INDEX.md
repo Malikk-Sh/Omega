@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `5882778dc7e34db7a800f28b86c6ca73cb9a5083`.
+Generated for source commit `7a60b3e00a027ac4035f239e905536eaee016e18`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 
@@ -69,8 +69,10 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`assets/v2/README.md`](../assets/v2/README.md)
 ## AI authoritative inputs
 
+- [`ai-context/README.md`](../ai-context/README.md)
 - [`ai-context/HANDOFF_BASE.md`](../ai-context/HANDOFF_BASE.md)
 - [`ai-context/ROADMAP.md`](../ai-context/ROADMAP.md)
+- [`ai-context/gdd-source/README.md`](../ai-context/gdd-source/README.md)
 - [`ai-context/gdd-source/part-01.md`](../ai-context/gdd-source/part-01.md)
 - [`ai-context/gdd-source/part-02.md`](../ai-context/gdd-source/part-02.md)
 - [`ai-context/gdd-source/part-03.md`](../ai-context/gdd-source/part-03.md)

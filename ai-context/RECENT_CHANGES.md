@@ -1,8 +1,10 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Recent Changes
 
-Generated from the commit history available to the sync process.
+Generated from commit history ending at source commit `7a60b3e00a027ac4035f239e905536eaee016e18`.
 
+- `7a60b3e` — 2026-09-10T20:19:56+03:00 — Make AI context freshness deterministic after auto-sync commits
+- `2488c11` — 2026-09-10T17:18:07Z — chore(ai-context): auto-sync [skip ci]
 - `5882778` — 2026-09-10T20:17:56+03:00 — Fix AI context workflow untracked detection
 - `bd98014` — 2026-09-10T20:14:28+03:00 — AI context: document full GDD source assembly
 - `5a1d078` — 2026-09-10T20:14:12+03:00 — AI context: add automatic sync workflow
@@ -21,5 +23,3 @@ Generated from the commit history available to the sync process.
 - `f9295ce` — 2026-09-10T20:05:47+03:00 — AI context: add GDD source part 02
 - `c81cae7` — 2026-09-10T20:05:10+03:00 — AI context: add GDD source part 01
 - `fd0eefe` — 2026-09-10T19:45:17+03:00 — M3: document threshold milestone acceptance
-- `1eeb54a` — 2026-09-10T19:44:08+03:00 — M3: align threshold bindings with runtime schema
-- `8a79af3` — 2026-09-10T19:43:32+03:00 — M3: expose DoubleSide in lightweight Three type shim

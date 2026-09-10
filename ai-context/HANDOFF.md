@@ -308,8 +308,8 @@ main
 
 # OMEGA — Current Project Snapshot
 
-> Source commit: `5882778dc7e34db7a800f28b86c6ca73cb9a5083`  
-> Source commit date: `2026-09-10T20:17:56+03:00`  
+> Source commit: `7a60b3e00a027ac4035f239e905536eaee016e18`  
+> Source commit date: `2026-09-10T20:19:56+03:00`  
 > Branch when generated: `main`  
 > Package version: `0.5.0-m3`  
 > Latest milestone doc: `docs/MILESTONE_3.md`  
@@ -361,7 +361,7 @@ tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigati
 
 ## Freshness rule
 
-This file is generated from repository state. If its source commit is older than current `main`, run `npm run ai:sync` or wait for the AI-context GitHub Action before relying on it.
+`sourceCommit` is the latest **substantive repository commit** used to build this context. Because the sync workflow writes generated files in a follow-up `chore(ai-context): auto-sync` commit, current `main` may legitimately be one generated-only child commit ahead of `sourceCommit`. Use `npm run ai:check` and `CONTEXT_MANIFEST.json` hashes as the canonical freshness check rather than requiring exact HEAD SHA equality.
 
 ---
 
@@ -858,8 +858,8 @@ Before starting a new milestone:
 
 # Instructions to the next AI
 
-1. Confirm this handoff source commit against current `main`.
-2. If they differ, inspect live source and run `npm run ai:sync` before relying on generated facts.
+1. Read `PROJECT_SNAPSHOT.md` and `CONTEXT_MANIFEST.json`, then inspect live `main` source before coding.
+2. A generated-only `chore(ai-context): auto-sync` commit may be one child ahead of `sourceCommit`; this is normal. Run `npm run ai:check` to verify actual freshness.
 3. Run the current `npm run build` before implementation.
 4. Preserve every existing regression test and save migration path.
 5. Use a milestone/feature branch, Vercel preview, compare, then fast-forward `main` without force.

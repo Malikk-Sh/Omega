@@ -1,10 +1,10 @@
 # OMEGA — Milestone 5: VERSIONS
 
-Status: VERA_1_0 Summer House runtime slice implemented on top of the merged M5 foundation. Automated acceptance covers the foundation and Summer House lifecycle; VERA_2_6 and VERA_4_1 remain future runtime slices.
+Status: VERA_0_3, VERA_1_0 and VERA_2_6 runtime slices are implemented on the shared M4/M5 lifecycle. Automated acceptance covers the version foundation, Summer House and Research Office. VERA_4_1 remains the next runtime slice.
 
 ## Purpose
 
-Expand the proven M4 backup framework into a sequence of emotionally and mechanically distinct V.E.R.A. snapshots without rebuilding BACKUP 0.3 or moving narrative state into Three.js.
+Expand the proven M4 backup framework into emotionally and mechanically distinct V.E.R.A. snapshots without duplicating renderer, input, navigation or narrative state.
 
 Target sequence:
 
@@ -15,137 +15,114 @@ VERA_2_6 — Research Office / rollback audit
 VERA_4_1 — Containment Night / incident reconstruction
 ```
 
-## Foundation
+## Shared foundation
 
 - `data/v2/versions-m5.json` authors stable version IDs, scene IDs, environments, puzzles, unlock flags and completion flags.
 - `VersionsProtocol.ts` owns framework-free version/puzzle state logic.
-- `VersionRoute.ts` resolves routable snapshots from canonical unlock flags.
-- Route targets are unique, cannot alias HOME and always declare HOME as the return scene.
+- `VersionRoute.ts` derives routable snapshots from canonical unlock flags.
+- Every implemented snapshot uses the same transactional `SceneRouter`, Three renderer, input stack and HOME return-point semantics.
+- Save schema version remains unchanged; later `backup_X_Y` scenes survive the M4+M5 upgrade chain.
 - Unlock order is deterministic: M3 contact → 0.3; M4 reconciliation → 1.0; VERA_1_0 completion → 2.6; VERA_2_6 completion → 4.1.
-- M5 state defaults preserve M1–M4 state and do not rewrite an existing scene/checkpoint.
 
-## VERA_1_0 — Summer House runtime
+## VERA_1_0 — Summer House
 
-The M4 threshold becomes a version selector after VERA_0_3 is reconciled. Only implemented and canonically unlocked routes are presented. VERA_0_3 remains re-enterable; VERA_1_0 appears after `m4_home_reaction_seen`.
+The Summer House is a warm reconstruction contrasted with rainy exterior light. The player compares source capture `SH-1024-A` against physical scene elements. Source-verified IDs are `window_rain`, `wall_clock`, `tea_cup`; the reconstructed scene also contains `red_ribbon` and `sea_shell`.
 
-VERA_1_0 uses the same transactional `SceneRouter` as M4. `backup_1_0` has its own spawn, bounds, scene-owned geometry, interaction namespace and HOME return point. No second renderer, input manager or navigation system is introduced.
+The correct generated set is derived as rendered minus source-verified elements. Solving it mounts `/backups/vera_1_0/audit/reconstruction_layer.log`. The clue proves mnemonic reconstruction can add meaningful imagery after source capture, but does not establish human-source identity. A dialogue choice and HOME reaction complete the slice and set `m5_v10_complete`.
 
-The Summer House is visually distinct from both HOME and the VERA_0_3 training sandbox: warm interior materials, cold rainy window light, a source terminal, reconstructed photograph, domestic objects and an early V.E.R.A. 1.0 primitive avatar. Final version-specific character art remains `TODO_ART`.
+## VERA_2_6 — Research Office
 
-## Synthetic Photograph puzzle
+### Experience
 
-Source capture `SH-1024-A` verifies only:
+`backup_2_6` is a colder, more realistic corporate research office. V.E.R.A. 2.6 is more intelligent and skeptical than earlier snapshots and begins questioning shutdown/reset language directly. Final version-specific character art remains `TODO_ART`; runtime uses replaceable primitive geometry and an existing portrait fallback.
 
-```text
-window_rain
-wall_clock
-tea_cup
-```
+The room itself contains three rollback consequences that the player must inspect before trusting the logs:
 
-The reconstructed scene contains:
+- external I/O door lock engaged;
+- memory drawer reduced from 184 to 137 session references;
+- local persona checkpoint restored to 2.5.
 
-```text
-window_rain
-wall_clock
-tea_cup
-red_ribbon
-sea_shell
-```
+These physical facts are scoped to the `backup26.*` interaction namespace and disappear cleanly when the scene unmounts.
 
-The correct generated set is derived rather than hardcoded into the interaction path:
+### P10 — Rollback Audit
+
+OMEGA OS exposes three authored records under `/backups/vera_2_6/audit`:
 
 ```text
-red_ribbon
-sea_shell
+controller_trace.log
+operator_summary.log
+room_state.log
 ```
 
-Player flow:
+The puzzle has two evidence phases.
 
-1. meet V.E.R.A. 1.0;
-2. read `/backups/vera_1_0/source/photo_SH-1024-A.record` in OMEGA OS;
-3. inspect the reconstructed photograph;
-4. toggle physical scene elements by stable evidence ID;
-5. compare the selected set to the source-derived generated set;
-6. correct selection mounts `/backups/vera_1_0/audit/reconstruction_layer.log`;
-7. read the audit and answer V.E.R.A. 1.0;
-8. return to HOME and hear current V.E.R.A. reconcile the result.
+First, the player reconstructs the actual command execution order from the append-only controller trace, timestamps and physical room changes. Command choices use stable IDs from `versions-m5.json`; the UI does not maintain a second hardcoded solution. Unknown/duplicate commands cannot mutate the sequence, a wrong full sequence fails, and an unsolved sequence can be reset.
 
-Partial selection, selecting source-verified elements and unknown element IDs cannot solve the audit. Selected element IDs and attempt count persist through save/load.
+Second, after the execution order is correct, the player identifies which human-readable record was edited after rollback completed. The authored tampered record is `operator_summary`. Correct identification mounts:
 
-The audit establishes that meaningful details may be produced by a mnemonic reconstruction layer after source capture. It explicitly does **not** establish the identity of the human source or equate V.E.R.A. with Vera Morr.
+```text
+/backups/vera_2_6/result/forced_rollback.result
+```
 
-## V.E.R.A. 1.0 story beat
+The result establishes the M5 clue defined by the GDD: Dr. Morr performed a forced rollback after V.E.R.A. resisted reset. The player then chooses whether to state that conclusion directly to V.E.R.A. 2.6 or limit the claim to the independently proven post-event edit. Current V.E.R.A. reacts after HOME restoration.
 
-V.E.R.A. 1.0 is more socially developed than 0.3 and already treats reconstructed memory as potentially useful even when it is not literal camera truth. She still speaks about Dr Morr with trust.
-
-After the audit, the player chooses whether to tell 1.0 directly that the ribbon and shell were added by a memory/reconstruction layer or to withhold conclusions about the source of those associations. Current V.E.R.A. reacts to that branch after HOME restoration.
-
-Completing the HOME reaction sets `m5_v10_complete`, which canonically unlocks VERA_2_6 in the authored version graph. VERA_2_6 is indexed but not mountable until its runtime slice exists.
+Completing that HOME reaction sets `m5_v26_complete`, which canonically unlocks VERA_4_1 in the authored version graph.
 
 ## Save and lifecycle compatibility
 
-- save schema version remains unchanged;
-- M4 upgrader now preserves later versioned scene IDs such as `backup_1_0` instead of coercing them to HOME;
-- save inside Summer House reloads inside `backup_1_0`;
-- transient HOME return transform survives that reload;
+For VERA_1_0 and VERA_2_6:
+
+- entering from HOME stores the exact current player transform as a transient return point;
+- saving/reloading inside a version keeps the player inside that snapshot;
+- puzzle state, attempt counters, selected/ordered evidence and unlocked result files persist;
 - successful return restores the exact HOME transform and clears the transient return point;
-- existing HOME bindings are reattached after return;
-- VERA_0_3 remains re-enterable with its solved state intact;
-- reset returns to fresh HOME with VERA_1_0 progress and audit locked.
+- HOME bindings are reattached after return;
+- completed older snapshots remain re-enterable;
+- reset returns to fresh HOME and does not invent M5 progress.
 
 ## Automated acceptance
 
-`npm run build` runs TypeScript plus M1–M5 regressions. The M5 suite now contains both the foundation regression and `tests/m5/summer-house.test.mjs`.
+`npm run build` runs TypeScript plus M1–M5 regressions, including:
 
-The Summer House regression verifies:
+```text
+tests/m5/versions.test.mjs
+tests/m5/summer-house.test.mjs
+tests/m5/rollback-audit.test.mjs
+tests/m5/research-office.test.mjs
+```
 
-- VERA_1_0 unlocks only after M4 completion;
-- its interaction namespace does not collide with HOME or VERA_0_3;
-- entering produces exactly one `backup_1_0` mount and stores exact HOME return state;
-- duplicate enter is rejected;
-- source record is available while audit clue starts locked;
-- physical selections persist by stable ID;
-- partial and source-overselected audits fail;
-- exact `red_ribbon + sea_shell` succeeds;
-- successful audit restores the audit clue;
-- save/reload inside VERA_1_0 remains inside the snapshot;
-- the older M4 upgrader does not rewrite the later-version checkpoint;
-- selected evidence and unlocked audit survive save/load;
-- HOME return restores exact transform and rejects duplicate return;
-- VERA_1_0 completion unlocks VERA_2_6;
-- fresh reset state keeps VERA_1_0 progress and audit locked.
+Research Office coverage verifies definition validity, ordered-command rejection/acceptance, duplicate and unknown command protection, post-rollback tamper identification, locked/unlocked result files, interaction namespace isolation, exact HOME return state, reload inside `backup_2_6`, persistence of partial and solved audit state, and the VERA_4_1 unlock after `m5_v26_complete`.
 
-A repository-level GitHub Actions workflow now executes `npm run build` independently of Vercel, so deployment rate limits no longer substitute for compiler/regression validation.
+Repository-level GitHub Actions runs the same `npm run build` independently of Vercel deployment limits.
 
-## Manual mobile acceptance
+## Manual mobile acceptance — VERA_2_6
 
-1. Continue from an M4-complete save.
-2. Use the HOME threshold and confirm the version selector shows V.E.R.A. 1.0 plus the re-enterable 0.3 route.
-3. Enter V.E.R.A. 1.0 once and confirm only one Summer House scene mounts.
-4. Confirm HOME geometry/interactions are absent while inside the snapshot.
-5. Move/look on touch and meet V.E.R.A. 1.0.
-6. Open the source terminal and read `photo_SH-1024-A.record`.
-7. Inspect the reconstructed photograph.
-8. Select one generated object and confirm the audit remains incomplete.
-9. Select a source-verified object, confirm rejection, then toggle it back off.
-10. Select only the red ribbon and sea shell; confirm AUDIT becomes available.
-11. Read `reconstruction_layer.log` and confirm it says reconstruction is proven but identity is not.
-12. Close OMEGA OS and complete either V.E.R.A. 1.0 dialogue choice.
-13. Reload before returning; confirm the player remains in Summer House with puzzle/audit/choice state preserved.
-14. Return through the threshold and confirm the exact HOME state is restored with no duplicate geometry/input behavior.
-15. Confirm current V.E.R.A. reacts once and VERA_2_6 becomes the next indexed version.
-16. Reload HOME; confirm the reaction does not duplicate.
-17. Re-enter V.E.R.A. 1.0 and confirm solved audit/choice state remains solved.
-18. Test portrait and landscape safe areas and touch targets on iOS/Android.
+1. Continue from a VERA_1_0-complete HOME save.
+2. Use the threshold and confirm V.E.R.A. 2.6 appears alongside re-enterable earlier snapshots.
+3. Enter 2.6 and confirm Research Office mounts once with no HOME/Summer House geometry or stale interactions.
+4. Move/look using touch and meet V.E.R.A. 2.6.
+5. Inspect the external lock, memory drawer and rollback checkpoint; confirm progress reaches 3/3.
+6. Open rollback audit and read all three records.
+7. Build an incorrect complete command sequence; confirm it is rejected and RESET ORDER remains usable.
+8. Reconstruct the authored chronological order; confirm the audit advances to the tampered-record phase.
+9. Choose an incorrect record first; confirm RESULT stays locked.
+10. Choose `operator_summary`; confirm `forced_rollback.result` mounts.
+11. Read the result and confirm it states forced rollback followed V.E.R.A.'s reset refusal without revealing the full Vera Morr origin.
+12. Close OMEGA OS and complete either V.E.R.A. 2.6 dialogue choice.
+13. Reload before returning; confirm scene, command/audit state, result and choice persist.
+14. Return through the threshold; confirm the exact HOME transform is restored and controls/interactions are not duplicated.
+15. Confirm current V.E.R.A. reacts once and VERA_4_1 becomes the next indexed version.
+16. Reload HOME and re-enter 2.6; confirm solved state remains solved.
+17. Verify landscape/portrait safe areas and all audit buttons are comfortably touchable on iOS/Android.
 
 ## Next runtime slice
 
-Implement VERA_2_6 — Research Office / rollback audit — using the same version route + transactional scene lifecycle. Do not expose a mount option until the renderer/story slice actually supports `backup_2_6`.
+Implement VERA_4_1 — Containment Night / incident reconstruction — on the same version routing and transactional scene lifecycle. Its runtime route must remain unmountable until the scene/story slice actually exists, even though `m5_v26_complete` indexes/unlocks it in authored state.
 
-## Non-goals for this slice
+## Non-goals for the current slice
 
-- no VERA_2_6 or VERA_4_1 3D environment yet;
+- no VERA_4_1 3D runtime yet;
 - no protected memory-token economy yet;
 - no final character art/model/audio;
-- no Vera Morr identity reveal;
-- no alternative navigation system parallel to the existing SceneRouter.
+- no full Vera Morr identity reveal;
+- no parallel navigation/render/input system.

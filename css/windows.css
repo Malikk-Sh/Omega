@@ -1,0 +1,172 @@
+/* Менеджер окон */
+.window {
+    position: absolute;
+    background: var(--win-bg);
+    border: 2px solid var(--text);
+    box-shadow: 5px 5px 0 var(--dim);
+    min-width: 300px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    top: 50px;
+    left: 50px;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.1s, transform 0.1s;
+    max-width: 95vw;
+    max-height: 80vh;
+    z-index: 100;
+    will-change: transform, left, top;
+}
+
+.window.open {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.window.active {
+    z-index: 110;
+    border-color: var(--accent);
+    box-shadow: 8px 8px 0 var(--dim);
+}
+
+.window.dying {
+    animation: window-buggy-close 0.3s forwards !important;
+    pointer-events: none;
+}
+
+.window.alert-win {
+    border-color: var(--error);
+    box-shadow: 5px 5px 0 #500;
+    z-index: 200000 !important;
+    min-width: 200px;
+    min-height: auto;
+}
+
+.window.alert-win .win-header {
+    background: var(--error);
+    color: #fff;
+}
+
+.win-header {
+    background: var(--text);
+    color: var(--bg);
+    padding: 8px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    border-bottom: 2px solid var(--dim);
+    z-index: 100000;
+    position: relative;
+}
+
+.win-content {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Scroll бары */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--win-bg);
+    border-left: 1px solid var(--dim);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text);
+    border: 1px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+/* Иконки */
+.icon {
+    width: 80px;
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: transform 0.1s;
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+}
+
+.icon:active {
+    transform: scale(0.95);
+}
+
+.icon:hover .icon-label {
+    border-color: var(--accent);
+    color: #fff;
+    background: #000;
+}
+
+.icon-img {
+    font-size: 32px;
+    text-shadow: 0 0 10px var(--text);
+    margin-bottom: 0;
+    transition: color 0.3s;
+}
+
+.icon-label {
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+}
+
+.icon.hacked .icon-img {
+    color: #f00;
+    text-shadow: 0 0 15px #f00;
+    animation: violent-shake 0.2s infinite;
+}
+
+.icon.hacked .icon-label {
+    color: #f00;
+    border-color: #f00;
+}
+
+@media (min-width: 1024px) {
+    .window {
+        min-width: 450px;
+        min-height: 300px;
+        box-shadow: 10px 10px 0 var(--dim);
+    }
+
+    .win-header {
+        padding: 12px 15px;
+        font-size: 20px;
+    }
+
+    .win-content {
+        padding: 20px;
+        font-size: 18px;
+    }
+
+    .icon {
+        width: 90px;
+        gap: 8px;
+    }
+
+    .icon-img {
+        font-size: 40px;
+        margin-bottom: 3px;
+    }
+
+    .icon-label {
+        font-size: 12px;
+        padding: 2px 6px;
+    }
+}

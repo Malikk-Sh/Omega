@@ -1,15 +1,16 @@
 {
   "name": "omega-web-game",
   "private": true,
-  "version": "0.5.0-m3",
+  "version": "0.6.0-m4",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs",
+    "build": "tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs",
     "test:m0": "node tests/m0/core.test.mjs",
     "test:m1": "node tests/m1/home.test.mjs",
     "test:m2": "node tests/m2/investigation.test.mjs",
     "test:m3": "node tests/m3/threshold.test.mjs",
-    "check:m3": "npm run build",
+    "test:m4": "node tests/m4/backup03.test.mjs",
+    "check:m4": "npm run build",
     "ai:sync": "node scripts/update-ai-context.mjs",
     "ai:check": "node scripts/update-ai-context.mjs --check"
   },

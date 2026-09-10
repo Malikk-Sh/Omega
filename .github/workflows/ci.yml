@@ -1,0 +1,30 @@
+name: OMEGA CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'milestone-*'
+
+concurrency:
+  group: omega-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck and milestone regressions
+        run: npm run build

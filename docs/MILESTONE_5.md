@@ -1,6 +1,6 @@
 # OMEGA — Milestone 5: VERSIONS
 
-Status: foundation in progress on a stacked branch above M4. The first data/state/routing regressions are implemented; additional 3D snapshot traversal is not yet part of this slice.
+Status: VERA_1_0 Summer House runtime slice implemented on top of the merged M5 foundation. Automated acceptance covers the foundation and Summer House lifecycle; VERA_2_6 and VERA_4_1 remain future runtime slices.
 
 ## Purpose
 
@@ -15,32 +15,26 @@ VERA_2_6 — Research Office / rollback audit
 VERA_4_1 — Containment Night / incident reconstruction
 ```
 
-## Foundation implemented
+## Foundation
 
-- Added authored `data/v2/versions-m5.json`.
-- Added stable IDs, scene IDs, environment roles, puzzle IDs, unlock flags and completion flags for 0.3 / 1.0 / 2.6 / 4.1.
-- Added `VersionsProtocol.ts` as framework-free story/state logic.
-- Added `VersionRoute.ts` as a renderer-independent route contract.
-- Added M5 save defaults without changing save schema version.
-- M5 state upgrade does not change the current scene or checkpoint.
-- Existing M4 completion state is preserved.
-- Version unlock order is deterministic:
-  - M3 contact exposes 0.3;
-  - M4 HOME reconciliation exposes 1.0;
-  - VERA_1_0 completion exposes 2.6;
-  - VERA_2_6 completion exposes 4.1.
-- Duplicate version IDs and scene IDs are rejected by definition validation.
-- Authored version order is validated so content cannot silently reorder the narrative arc.
-- Route targets are validated as unique and forbidden from aliasing canonical HOME.
-- Routable snapshots are derived from canonical unlock flags; adding a newly unlocked authored version does not require a new hardcoded route branch.
-- Locked route resolution returns the exact canonical flag that still gates the version.
-- All version routes declare HOME as the canonical return scene.
+- `data/v2/versions-m5.json` authors stable version IDs, scene IDs, environments, puzzles, unlock flags and completion flags.
+- `VersionsProtocol.ts` owns framework-free version/puzzle state logic.
+- `VersionRoute.ts` resolves routable snapshots from canonical unlock flags.
+- Route targets are unique, cannot alias HOME and always declare HOME as the return scene.
+- Unlock order is deterministic: M3 contact → 0.3; M4 reconciliation → 1.0; VERA_1_0 completion → 2.6; VERA_2_6 completion → 4.1.
+- M5 state defaults preserve M1–M4 state and do not rewrite an existing scene/checkpoint.
 
-## VERA_1_0 puzzle foundation — Synthetic Photograph
+## VERA_1_0 — Summer House runtime
 
-The first M5 puzzle compares a source capture record with a reconstructed rendered memory.
+The M4 threshold becomes a version selector after VERA_0_3 is reconciled. Only implemented and canonically unlocked routes are presented. VERA_0_3 remains re-enterable; VERA_1_0 appears after `m4_home_reaction_seen`.
 
-Source-verified elements:
+VERA_1_0 uses the same transactional `SceneRouter` as M4. `backup_1_0` has its own spawn, bounds, scene-owned geometry, interaction namespace and HOME return point. No second renderer, input manager or navigation system is introduced.
+
+The Summer House is visually distinct from both HOME and the VERA_0_3 training sandbox: warm interior materials, cold rainy window light, a source terminal, reconstructed photograph, domestic objects and an early V.E.R.A. 1.0 primitive avatar. Final version-specific character art remains `TODO_ART`.
+
+## Synthetic Photograph puzzle
+
+Source capture `SH-1024-A` verifies only:
 
 ```text
 window_rain
@@ -48,7 +42,7 @@ wall_clock
 tea_cup
 ```
 
-Rendered memory elements:
+The reconstructed scene contains:
 
 ```text
 window_rain
@@ -58,87 +52,100 @@ red_ribbon
 sea_shell
 ```
 
-The puzzle solution is **derived** as rendered minus source-verified elements:
+The correct generated set is derived rather than hardcoded into the interaction path:
 
 ```text
 red_ribbon
 sea_shell
 ```
 
-The evaluator therefore does not trust a UI button or hardcoded answer path. It checks the selected stable element IDs against the authored evidence relationship.
+Player flow:
 
-Rules already covered:
+1. meet V.E.R.A. 1.0;
+2. read `/backups/vera_1_0/source/photo_SH-1024-A.record` in OMEGA OS;
+3. inspect the reconstructed photograph;
+4. toggle physical scene elements by stable evidence ID;
+5. compare the selected set to the source-derived generated set;
+6. correct selection mounts `/backups/vera_1_0/audit/reconstruction_layer.log`;
+7. read the audit and answer V.E.R.A. 1.0;
+8. return to HOME and hear current V.E.R.A. reconcile the result.
 
-- partial selection is rejected;
-- selecting a source-verified object as generated is rejected;
-- unknown object IDs are rejected descriptively;
-- selection order does not matter;
-- duplicate taps do not create duplicate evidence selections;
-- a valid audit emits clue ID `v10_reconstruction_layer_detected`.
+Partial selection, selecting source-verified elements and unknown element IDs cannot solve the audit. Selected element IDs and attempt count persist through save/load.
 
-This clue establishes that a later association/reconstruction layer can add meaningful imagery that was absent from the source capture. It must not by itself reveal the full Vera Morr origin.
+The audit establishes that meaningful details may be produced by a mnemonic reconstruction layer after source capture. It explicitly does **not** establish the identity of the human source or equate V.E.R.A. with Vera Morr.
 
-## Save compatibility
+## V.E.R.A. 1.0 story beat
 
-`upgradeStateForVersions()` only adds missing M5 flags/counters. It does not:
+V.E.R.A. 1.0 is more socially developed than 0.3 and already treats reconstructed memory as potentially useful even when it is not literal camera truth. She still speaks about Dr Morr with trust.
 
-- change `world.activeScene`;
-- change the current checkpoint;
-- clear M1–M4 flags;
-- clear filesystem mutations;
-- reset V.E.R.A./NULL relationship state.
+After the audit, the player chooses whether to tell 1.0 directly that the ribbon and shell were added by a memory/reconstruction layer or to withhold conclusions about the source of those associations. Current V.E.R.A. reacts to that branch after HOME restoration.
 
-A completed M4 save therefore unlocks VERA_1_0 immediately after M5 upgrade without inventing progress inside that snapshot.
+Completing the HOME reaction sets `m5_v10_complete`, which canonically unlocks VERA_2_6 in the authored version graph. VERA_2_6 is indexed but not mountable until its runtime slice exists.
 
-## Automated regression
+## Save and lifecycle compatibility
 
-`tests/m5/versions.test.mjs` verifies:
+- save schema version remains unchanged;
+- M4 upgrader now preserves later versioned scene IDs such as `backup_1_0` instead of coercing them to HOME;
+- save inside Summer House reloads inside `backup_1_0`;
+- transient HOME return transform survives that reload;
+- successful return restores the exact HOME transform and clears the transient return point;
+- existing HOME bindings are reattached after return;
+- VERA_0_3 remains re-enterable with its solved state intact;
+- reset returns to fresh HOME with VERA_1_0 progress and audit locked.
 
-1. authored version data validates;
-2. version route targets validate;
-3. M4 state survives M5 upgrade;
-4. M5 upgrade does not move scene/checkpoint;
-5. VERA_1_0 unlocks after M4 completion;
-6. VERA_2_6 and VERA_4_1 remain gated in order;
-7. routable version list is derived from canonical unlock flags;
-8. locked versions cannot resolve a route;
-9. newly unlocked versions become routable from authored scene metadata without router-specific conditionals;
-10. every version route returns to canonical HOME;
-11. synthetic-photo generated elements are derived correctly;
-12. partial/over/unknown selections fail;
-13. correct selection succeeds independent of order/duplicate taps;
-14. reward clue ID is deterministic;
-15. M5 puzzle flags/counters persist through SaveManager;
-16. upgrading an older completed-M4 save adds defaults without fake M5 progress.
+## Automated acceptance
 
-The repository Vercel integration reached its deployment-rate limit while this stacked branch was being built. That status is infrastructure-only (`Deployment rate limited — retry in 24 hours`), not a compiler/test failure.
+`npm run build` runs TypeScript plus M1–M5 regressions. The M5 suite now contains both the foundation regression and `tests/m5/summer-house.test.mjs`.
 
-To avoid treating the rate limit as validation, the new M5 TypeScript modules were independently compiled with TypeScript 5.8.3 and isolated Node regressions passed:
+The Summer House regression verifies:
 
-```text
-M5 isolated regression: PASS
-M5 route contract isolated regression: PASS
-```
+- VERA_1_0 unlocks only after M4 completion;
+- its interaction namespace does not collide with HOME or VERA_0_3;
+- entering produces exactly one `backup_1_0` mount and stores exact HOME return state;
+- duplicate enter is rejected;
+- source record is available while audit clue starts locked;
+- physical selections persist by stable ID;
+- partial and source-overselected audits fail;
+- exact `red_ribbon + sea_shell` succeeds;
+- successful audit restores the audit clue;
+- save/reload inside VERA_1_0 remains inside the snapshot;
+- the older M4 upgrader does not rewrite the later-version checkpoint;
+- selected evidence and unlocked audit survive save/load;
+- HOME return restores exact transform and rejects duplicate return;
+- VERA_1_0 completion unlocks VERA_2_6;
+- fresh reset state keeps VERA_1_0 progress and audit locked.
 
-M1–M4 remained green on the final M4 implementation commit before the external rate limit was reached.
+A repository-level GitHub Actions workflow now executes `npm run build` independently of Vercel, so deployment rate limits no longer substitute for compiler/regression validation.
 
-## Next implementation slice
+## Manual mobile acceptance
 
-Wire VERA_1_0 into the existing scene lifecycle:
+1. Continue from an M4-complete save.
+2. Use the HOME threshold and confirm the version selector shows V.E.R.A. 1.0 plus the re-enterable 0.3 route.
+3. Enter V.E.R.A. 1.0 once and confirm only one Summer House scene mounts.
+4. Confirm HOME geometry/interactions are absent while inside the snapshot.
+5. Move/look on touch and meet V.E.R.A. 1.0.
+6. Open the source terminal and read `photo_SH-1024-A.record`.
+7. Inspect the reconstructed photograph.
+8. Select one generated object and confirm the audit remains incomplete.
+9. Select a source-verified object, confirm rejection, then toggle it back off.
+10. Select only the red ribbon and sea shell; confirm AUDIT becomes available.
+11. Read `reconstruction_layer.log` and confirm it says reconstruction is proven but identity is not.
+12. Close OMEGA OS and complete either V.E.R.A. 1.0 dialogue choice.
+13. Reload before returning; confirm the player remains in Summer House with puzzle/audit/choice state preserved.
+14. Return through the threshold and confirm the exact HOME state is restored with no duplicate geometry/input behavior.
+15. Confirm current V.E.R.A. reacts once and VERA_2_6 becomes the next indexed version.
+16. Reload HOME; confirm the reaction does not duplicate.
+17. Re-enter V.E.R.A. 1.0 and confirm solved audit/choice state remains solved.
+18. Test portrait and landscape safe areas and touch targets on iOS/Android.
 
-- connect the generic version route contract to the transactional M4 `SceneRouter` rather than creating a second navigation system;
-- add a version-selection surface that only exposes unlocked snapshots;
-- build a distinct Summer House primitive environment rather than recoloring HOME;
-- stage V.E.R.A. 1.0 as a more socially developed but still trusting version;
-- expose source-photo metadata through DOM OMEGA OS;
-- make rendered-memory objects use stable IDs matching the synthetic-photo evidence contract;
-- persist entry, puzzle solution, clue read, choice and HOME return;
-- keep M1–M5 regressions green.
+## Next runtime slice
 
-## Non-goals of the foundation slice
+Implement VERA_2_6 — Research Office / rollback audit — using the same version route + transactional scene lifecycle. Do not expose a mount option until the renderer/story slice actually supports `backup_2_6`.
+
+## Non-goals for this slice
 
 - no VERA_2_6 or VERA_4_1 3D environment yet;
 - no protected memory-token economy yet;
 - no final character art/model/audio;
 - no Vera Morr identity reveal;
-- no alternative navigation system parallel to M4 SceneRouter.
+- no alternative navigation system parallel to the existing SceneRouter.

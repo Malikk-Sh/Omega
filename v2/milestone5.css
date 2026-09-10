@@ -1,0 +1,60 @@
+html[data-omega-scene="backup_1_0"] .m1-hud,
+html[data-omega-scene="backup_1_0"] .m1-objective {
+  border-color: rgba(224, 188, 139, .34);
+  background: rgba(44, 38, 34, .84);
+  color: #f7ead7;
+  box-shadow: 0 12px 38px rgba(16, 22, 27, .24);
+  backdrop-filter: blur(10px);
+}
+
+html[data-omega-scene="backup_1_0"] .m1-brand small,
+html[data-omega-scene="backup_1_0"] .m1-objective small,
+html[data-omega-scene="backup_1_0"] .m1-objective span {
+  color: rgba(244, 225, 200, .68);
+}
+
+html[data-omega-scene="backup_1_0"] .m1-memory-link {
+  color: #f2d09d;
+  border-color: rgba(235, 191, 126, .4);
+  background: rgba(104, 78, 52, .42);
+}
+
+html[data-omega-scene="backup_1_0"] .m1-interaction {
+  border-color: rgba(240, 205, 154, .5);
+  background: rgba(35, 29, 25, .9);
+  color: #f5dfbd;
+}
+
+html[data-omega-scene="backup_1_0"] .m1-crosshair {
+  filter: drop-shadow(0 1px 4px rgba(255, 219, 169, .7));
+}
+
+html[data-omega-scene="backup_1_0"] .m4-os-window {
+  background:
+    radial-gradient(circle at 15% 5%, rgba(207, 155, 95, .13), transparent 34%),
+    radial-gradient(circle at 85% 90%, rgba(94, 143, 164, .1), transparent 35%),
+    linear-gradient(180deg, rgba(27, 25, 24, .98), rgba(13, 17, 20, .99));
+}
+
+html[data-omega-scene="backup_1_0"] .m2-os-nav button.is-active {
+  border-color: rgba(231, 190, 133, .6);
+  color: #ffe0ae;
+  background: rgba(120, 83, 47, .3);
+}
+
+html[data-omega-scene="backup_1_0"] .m0-file,
+html[data-omega-scene="backup_1_0"] .m1-file-preview,
+html[data-omega-scene="backup_1_0"] .m2-text-preview {
+  border-color: rgba(215, 183, 142, .2);
+}
+
+html[data-omega-scene="backup_1_0"] .m0-file code,
+html[data-omega-scene="backup_1_0"] .m2-text-preview code {
+  color: #e4bd87;
+}
+
+@media (orientation: portrait) and (max-width: 520px) {
+  html[data-omega-scene="backup_1_0"] .m1-objective {
+    max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+}

@@ -2,7 +2,8 @@ import type { OmegaGameState, PlayerTransform, SceneReturnPoint } from "../core/
 
 export const HOME_SCENE = "apartment_home_m4";
 export const BACKUP_03_SCENE = "backup_0_3";
-export type OmegaSceneId = typeof HOME_SCENE | typeof BACKUP_03_SCENE;
+export const BACKUP_10_SCENE = "backup_1_0";
+export type OmegaSceneId = typeof HOME_SCENE | typeof BACKUP_03_SCENE | typeof BACKUP_10_SCENE;
 
 export const SCENE_INTERACTION_IDS = {
   home: {
@@ -20,6 +21,17 @@ export const SCENE_INTERACTION_IDS = {
     photo: "backup03.sample.photo",
     relay: "backup03.sample.relay",
     returnThreshold: "backup03.return"
+  },
+  backup10: {
+    vera: "backup10.vera",
+    sourceRecord: "backup10.source.record",
+    photo: "backup10.photo",
+    ribbon: "backup10.photo.red_ribbon",
+    shell: "backup10.photo.sea_shell",
+    clock: "backup10.photo.wall_clock",
+    cup: "backup10.photo.tea_cup",
+    window: "backup10.photo.window_rain",
+    returnThreshold: "backup10.return"
   }
 } as const;
 
@@ -34,10 +46,9 @@ interface SceneTransitionSnapshot {
   returnPoint?: SceneReturnPoint;
 }
 
-const BACKUP_03_SPAWN: PlayerTransform = {
-  position: [0, 1.62, 2.35],
-  yaw: 0,
-  pitch: 0
+const BACKUP_SPAWNS: Record<Exclude<OmegaSceneId, typeof HOME_SCENE>, PlayerTransform> = {
+  [BACKUP_03_SCENE]: { position: [0, 1.62, 2.35], yaw: 0, pitch: 0 },
+  [BACKUP_10_SCENE]: { position: [0, 1.62, 3.35], yaw: 0, pitch: 0 }
 };
 
 const HOME_THRESHOLD_RETURN: PlayerTransform = {
@@ -63,7 +74,9 @@ function cloneReturnPoint(returnPoint: SceneReturnPoint | undefined): SceneRetur
 }
 
 export function normalizeSceneId(sceneId: string): OmegaSceneId {
-  return sceneId === BACKUP_03_SCENE ? BACKUP_03_SCENE : HOME_SCENE;
+  if (sceneId === BACKUP_03_SCENE) return BACKUP_03_SCENE;
+  if (sceneId === BACKUP_10_SCENE) return BACKUP_10_SCENE;
+  return HOME_SCENE;
 }
 
 export class SceneRouter {
@@ -91,19 +104,15 @@ export class SceneRouter {
   }
 
   enterBackup03(): boolean {
-    if (this.transitioning || !this.is(HOME_SCENE)) return false;
-    return this.runTransition(BACKUP_03_SCENE, () => {
-      this.state.world.returnPoint = {
-        sceneId: HOME_SCENE,
-        player: clonePlayer(this.state.player)
-      };
-      this.state.world.activeScene = BACKUP_03_SCENE;
-      this.state.player = clonePlayer(BACKUP_03_SPAWN);
-    });
+    return this.enterBackup(BACKUP_03_SCENE);
+  }
+
+  enterBackup10(): boolean {
+    return this.enterBackup(BACKUP_10_SCENE);
   }
 
   returnHome(): boolean {
-    if (this.transitioning || !this.is(BACKUP_03_SCENE)) return false;
+    if (this.transitioning || this.is(HOME_SCENE)) return false;
     return this.runTransition(HOME_SCENE, () => {
       const returnPoint = this.state.world.returnPoint;
       const player = returnPoint?.sceneId === HOME_SCENE
@@ -112,6 +121,18 @@ export class SceneRouter {
       this.state.world.activeScene = HOME_SCENE;
       this.state.player = clonePlayer(player);
       delete this.state.world.returnPoint;
+    });
+  }
+
+  private enterBackup(targetScene: Exclude<OmegaSceneId, typeof HOME_SCENE>): boolean {
+    if (this.transitioning || !this.is(HOME_SCENE)) return false;
+    return this.runTransition(targetScene, () => {
+      this.state.world.returnPoint = {
+        sceneId: HOME_SCENE,
+        player: clonePlayer(this.state.player)
+      };
+      this.state.world.activeScene = targetScene;
+      this.state.player = clonePlayer(BACKUP_SPAWNS[targetScene]);
     });
   }
 

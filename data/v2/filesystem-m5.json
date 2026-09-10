@@ -1,0 +1,46 @@
+{
+  "entries": [
+    {"path":"/memories","type":"directory","label":"Memories"},
+    {"path":"/system","type":"directory","label":"System"},
+    {"path":"/system/logs","type":"directory","label":"Recovery logs","parent":"/system"},
+    {"path":"/system/processes","type":"directory","label":"Process snapshots","parent":"/system"},
+    {"path":"/backups","type":"directory","label":"Backups"},
+    {"path":"/backups/vera_0_3","type":"directory","label":"VERA_0_3","parent":"/backups"},
+    {"path":"/backups/vera_0_3/training","type":"directory","label":"Training set","parent":"/backups/vera_0_3"},
+    {"path":"/backups/vera_0_3/archive","type":"directory","label":"Archive","parent":"/backups/vera_0_3"},
+    {"path":"/backups/vera_1_0","type":"directory","label":"VERA_1_0","parent":"/backups"},
+    {"path":"/backups/vera_1_0/source","type":"directory","label":"Source capture","parent":"/backups/vera_1_0"},
+    {"path":"/backups/vera_1_0/audit","type":"directory","label":"Reconstruction audit","parent":"/backups/vera_1_0"},
+    {"path":"/memories/test_photo.img","type":"file","label":"M0 test photograph","mime":"image/x-omega-memory","parent":"/memories","deletable":true,"restorable":true},
+    {
+      "path":"/memories/sea_2017.img","type":"file","label":"Море 2017.img","mime":"image/x-omega-memory","parent":"/memories","deletable":true,"restorable":true,"inspectable":true,
+      "artwork":"../assets/v2/props/sea_2017_polaroid.svg",
+      "metadata":{"CAPTURED":"17.03.2017 18:42:11","OWNER":"E. MORR","SECTOR":"M-017","CHECKSUM":"SEA-1703-Ω","LAST WRITE":"04.09.2081 19:23:04"}
+    },
+    {"path":"/memories/vera_note.txt","type":"file","label":"vera_note.txt","mime":"text/plain","parent":"/memories","deletable":false,"restorable":false,"content":"Sometimes I hear waves before HOME finishes loading. Recovery notes say an orphaned memory can be addressed by its original capture day and month: DDMM. I do not remember writing this. — V."},
+    {
+      "path":"/system/logs/recovery_1703.log","type":"file","label":"recovery_1703.log","mime":"text/x-omega-log","parent":"/system/logs","deletable":false,"restorable":false,"initiallyDeleted":true,"hiddenWhileDeleted":true,"recoveryKey":"1703",
+      "content":"[OMEGA COLD RECOVERY // 17-03]\n04:12:09  sector M-017 attached\n04:12:10  owner E.MORR verified\n04:12:12  target VERA_CORE/memory/sea mounted\n04:12:13  WARNING: secondary reader detected\n04:12:13  process name: <empty>\n04:12:13  process signature: NULL\n04:12:14  quarantine requested by SYSTEM\n04:12:14  quarantine denied by VERA_CORE\n04:12:15  reader detached\n04:12:15  31 bytes remain unaccounted for"
+    },
+    {
+      "path":"/system/processes/null_channel.proc","type":"file","label":"null_channel.proc","mime":"application/x-omega-process","parent":"/system/processes","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"PROCESS NULL\nPID: 0031\nROUTE: SYSTEM -> NULL\nSTATE: CHANNEL OPEN\nORIGIN: OUTSIDE INDEX\nPAYLOAD: 31 BYTES\nNOTE: do not expose channel to VERA_CORE"
+    },
+    {
+      "path":"/backups/vera_0_3/training/object_labels.log","type":"file","label":"object_labels.log","mime":"text/x-omega-training","parent":"/backups/vera_0_3/training","deletable":false,"restorable":false,
+      "content":"[VERA_0_3 // CLASSIFICATION SET]\nsample.cup   -> HUMAN_CONTEXT // no executable function\nsample.photo -> HUMAN_CONTEXT // observer-linked retention\nsample.relay -> SYSTEM_SERVICE // replaceable by function\npending.source -> UNCLASSIFIED\n\nRule under test: preserve meaning separately from executable utility."
+    },
+    {
+      "path":"/backups/vera_0_3/archive/human_source.index","type":"file","label":"human_source.index","mime":"text/x-omega-archive","parent":"/backups/vera_0_3/archive","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"[ARCHIVE SOURCE INDEX // PRE-PERSONA]\nsource family: HUMAN_CONTEXT\ningest owner: E.MORR\nsource samples predate VERA_0_3 persona build\nassociation import: PARTIAL\nidentity mapping: DISABLED\n\nNOTE: emotional-source archive must not be treated as subject identity."
+    },
+    {
+      "path":"/backups/vera_1_0/source/photo_SH-1024-A.record","type":"file","label":"photo_SH-1024-A.record","mime":"text/x-omega-source-record","parent":"/backups/vera_1_0/source","deletable":false,"restorable":false,
+      "content":"[SOURCE CAPTURE // SH-1024-A]\nCAPTURED: 14.07.2038 16:08:22\nCAMERA: MORR_ARCHIVE_CAM_02\nVERIFIED: window_rain, wall_clock, tea_cup\nASSOCIATION LAYER: NOT PRESENT IN SOURCE\n\nUse stable object IDs when comparing this source record to the rendered snapshot."
+    },
+    {
+      "path":"/backups/vera_1_0/audit/reconstruction_layer.log","type":"file","label":"reconstruction_layer.log","mime":"text/x-omega-audit","parent":"/backups/vera_1_0/audit","deletable":false,"restorable":true,"initiallyDeleted":true,"hiddenWhileDeleted":true,
+      "content":"[RECONSTRUCTION AUDIT // VERA_1_0]\nSOURCE: SH-1024-A\nGENERATED ASSOCIATIONS: red_ribbon, sea_shell\nLAYER: mnemonic reconstruction\nORIGIN OWNER: E.MORR\nIDENTITY CLAIM: NONE\n\nThe generated objects are meaningful additions produced after source capture. Their presence proves reconstruction, not subject identity."
+    }
+  ]
+}

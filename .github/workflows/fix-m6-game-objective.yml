@@ -1,0 +1,29 @@
+name: Fix M6 SEA objective wiring
+
+on:
+  push:
+    branches:
+      - milestone-6-sea-2017-runtime
+    paths:
+      - .github/workflows/fix-m6-game-objective.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: milestone-6-sea-2017-runtime
+      - name: Move SEA objective into updateObjective
+        run: node scripts/fix-m6-game-objective.mjs
+      - name: Commit wiring fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/Game.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: place SEA 2017 objective in lifecycle method"
+          git push

@@ -1,0 +1,66 @@
+name: Sync AI context
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'ai-context/GDD.md'
+      - 'ai-context/HANDOFF.md'
+      - 'ai-context/TECH_CONTRACT.md'
+      - 'ai-context/ASSET_BACKLOG.md'
+      - 'ai-context/MILESTONES.md'
+      - 'ai-context/PROJECT_SNAPSHOT.md'
+      - 'ai-context/SOURCE_INDEX.md'
+      - 'ai-context/RECENT_CHANGES.md'
+      - 'ai-context/CONTEXT_MANIFEST.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-context-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate AI context
+        env:
+          AI_CONTEXT_SOURCE_SHA: ${{ github.sha }}
+        run: node scripts/update-ai-context.mjs
+
+      - name: Commit generated context if changed
+        shell: bash
+        run: |
+          if git diff --quiet -- ai-context; then
+            echo "AI context already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            ai-context/GDD.md \
+            ai-context/HANDOFF.md \
+            ai-context/TECH_CONTRACT.md \
+            ai-context/ASSET_BACKLOG.md \
+            ai-context/MILESTONES.md \
+            ai-context/PROJECT_SNAPSHOT.md \
+            ai-context/SOURCE_INDEX.md \
+            ai-context/RECENT_CHANGES.md \
+            ai-context/CONTEXT_MANIFEST.json
+          git commit -m "chore(ai-context): auto-sync [skip ci]"
+          git push origin HEAD:main

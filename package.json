@@ -1,12 +1,13 @@
 {
   "name": "omega-web-game",
   "private": true,
-  "version": "0.2.0-m0",
+  "version": "0.3.0-m1",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test:m0": "node tests/m0/core.test.mjs",
-    "check:m0": "npm run build && npm run test:m0"
+    "test:m1": "node tests/m1/home.test.mjs",
+    "check:m1": "npm run build && npm run test:m1"
   },
   "dependencies": {
     "three": "0.186.0"

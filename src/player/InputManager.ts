@@ -35,12 +35,16 @@ export class InputManager {
     if (lookPad) this.bindLookPad(lookPad);
 
     root.querySelectorAll<HTMLElement>("[data-m0-action]").forEach(button => {
-      const handler = (event: PointerEvent) => {
+      // Fire discrete UI actions only after the gesture has completed. Using
+      // pointerdown here allowed a newly-opened overlay (for example dialogue)
+      // to receive the tail end / synthetic click from the same physical tap.
+      const handler = (event: MouseEvent) => {
         event.preventDefault();
+        event.stopPropagation();
         this.emitAction(button.dataset.m0Action ?? "");
       };
-      button.addEventListener("pointerdown", handler);
-      this.cleanup.push(() => button.removeEventListener("pointerdown", handler));
+      button.addEventListener("click", handler);
+      this.cleanup.push(() => button.removeEventListener("click", handler));
     });
   }
 

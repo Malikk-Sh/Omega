@@ -32,6 +32,8 @@ export class WorldRenderer {
   private anomalyUntil = 0;
   private anomalyShadow: any = null;
   private warmLight: any = null;
+  private nullTrace: any = null;
+  private nullTraceMaterial: any = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -73,10 +75,19 @@ export class WorldRenderer {
     if (this.anomalyShadow) this.anomalyShadow.visible = true;
   }
 
+  triggerRecoveryPulse(): void {
+    this.anomalyUntil = Math.max(this.anomalyUntil, performance.now() + 1050);
+  }
+
   getTarget(targetId: string): WorldTarget | null {
     const object = this.entities.get(targetId);
     if (!object) return null;
-    return { setVisible: (visible: boolean) => { object.visible = visible; } };
+    return {
+      setVisible: (visible: boolean) => {
+        object.visible = visible;
+        if (!visible && this.focused) this.setFocused(null);
+      }
+    };
   }
 
   syncFromState(state: OmegaGameState): void {
@@ -143,6 +154,7 @@ export class WorldRenderer {
 
     this.updateInteractionFocus();
     this.updateAnomaly(time);
+    this.updateNullTrace(time);
   }
 
   private updateInteractionFocus(): void {
@@ -155,13 +167,23 @@ export class WorldRenderer {
     let next: InteractionFocus | null = null;
     for (const hit of hits) {
       if (hit.distance > 2.35) break;
+      if (!this.isEffectivelyVisible(hit.object)) continue;
       let object = hit.object;
       while (object && !object.userData?.interactionId) object = object.parent;
-      if (!object?.userData?.interactionId) continue;
+      if (!object?.userData?.interactionId || !this.isEffectivelyVisible(object)) continue;
       next = { id: object.userData.interactionId, label: object.userData.interactionLabel ?? "Взаимодействовать" };
       break;
     }
     this.setFocused(next);
+  }
+
+  private isEffectivelyVisible(object: any): boolean {
+    let current = object;
+    while (current) {
+      if (current.visible === false) return false;
+      current = current.parent;
+    }
+    return true;
   }
 
   private setFocused(next: InteractionFocus | null): void {
@@ -180,6 +202,11 @@ export class WorldRenderer {
       this.warmLight.intensity = 12;
       if (this.anomalyShadow) this.anomalyShadow.visible = false;
     }
+  }
+
+  private updateNullTrace(time: number): void {
+    if (!this.nullTrace?.visible || !this.nullTraceMaterial) return;
+    this.nullTraceMaterial.opacity = 0.38 + (Math.sin(time * 0.009) + 1) * 0.2;
   }
 
   private registerInteractable(id: string, label: string, object: any): void {
@@ -302,5 +329,25 @@ export class WorldRenderer {
     this.anomalyShadow.position.set(2.52, 1.02, -4.35);
     this.anomalyShadow.visible = false;
     this.worldRoot.add(this.anomalyShadow);
+
+    this.nullTrace = new THREE.Group();
+    this.nullTraceMaterial = new THREE.MeshBasicMaterial({ color: 0x77ddff, transparent: true, opacity: 0.55 });
+    const traceParts = [
+      { size: [0.92, 0.025] as [number, number], pos: [0, 1.02, 0] as [number, number, number] },
+      { size: [0.92, 0.025] as [number, number], pos: [0, -1.02, 0] as [number, number, number] },
+      { size: [0.025, 2.06] as [number, number], pos: [-0.45, 0, 0] as [number, number, number] },
+      { size: [0.025, 2.06] as [number, number], pos: [0.45, 0, 0] as [number, number, number] },
+      { size: [0.58, 0.018] as [number, number], pos: [0, 0.15, 0.004] as [number, number, number] }
+    ];
+    for (const part of traceParts) {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(...part.size), this.nullTraceMaterial);
+      mesh.position.set(...part.pos);
+      this.nullTrace.add(mesh);
+    }
+    this.nullTrace.position.set(3.375, 1.18, 1.25);
+    this.nullTrace.rotation.y = -Math.PI / 2;
+    this.nullTrace.visible = false;
+    this.worldRoot.add(this.nullTrace);
+    this.entities.set("apartment.null_trace", this.nullTrace);
   }
 }

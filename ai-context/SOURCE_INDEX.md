@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `ebbbafc1326068456e5a56338ed7fd600c0441f7`.
+Generated for source commit `2174355206cb54e39d9dbc566fe9d00ead63d334`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 
@@ -29,8 +29,10 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`src/story/DialogueController.ts`](../src/story/DialogueController.ts)
 - [`src/story/ObjectiveController.ts`](../src/story/ObjectiveController.ts)
 - [`src/story/ThresholdProtocol.ts`](../src/story/ThresholdProtocol.ts)
+- [`src/story/VersionsProtocol.ts`](../src/story/VersionsProtocol.ts)
 - [`src/types/three.d.ts`](../src/types/three.d.ts)
 - [`src/world/SceneRouter.ts`](../src/world/SceneRouter.ts)
+- [`src/world/VersionRoute.ts`](../src/world/VersionRoute.ts)
 - [`src/world/WorldBinding.ts`](../src/world/WorldBinding.ts)
 ## Current authored data
 
@@ -39,6 +41,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`data/v2/filesystem-m2.json`](../data/v2/filesystem-m2.json)
 - [`data/v2/filesystem-m3.json`](../data/v2/filesystem-m3.json)
 - [`data/v2/filesystem-m4.json`](../data/v2/filesystem-m4.json)
+- [`data/v2/versions-m5.json`](../data/v2/versions-m5.json)
 - [`data/v2/world-bindings-m0.json`](../data/v2/world-bindings-m0.json)
 - [`data/v2/world-bindings-m1.json`](../data/v2/world-bindings-m1.json)
 - [`data/v2/world-bindings-m2.json`](../data/v2/world-bindings-m2.json)
@@ -51,6 +54,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`tests/m2/investigation.test.mjs`](../tests/m2/investigation.test.mjs)
 - [`tests/m3/threshold.test.mjs`](../tests/m3/threshold.test.mjs)
 - [`tests/m4/backup03.test.mjs`](../tests/m4/backup03.test.mjs)
+- [`tests/m5/versions.test.mjs`](../tests/m5/versions.test.mjs)
 ## Current v2 styles / shell
 
 - [`v2/index.html`](../v2/index.html)
@@ -67,6 +71,7 @@ These are repository links, not copied source. Always inspect the live file befo
 - [`docs/MILESTONE_2.md`](../docs/MILESTONE_2.md)
 - [`docs/MILESTONE_3.md`](../docs/MILESTONE_3.md)
 - [`docs/MILESTONE_4.md`](../docs/MILESTONE_4.md)
+- [`docs/MILESTONE_5.md`](../docs/MILESTONE_5.md)
 - [`docs/OMEGA_IMPLEMENTATION_CONTRACT.md`](../docs/OMEGA_IMPLEMENTATION_CONTRACT.md)
 - [`docs/UI_ASSET_BACKLOG.md`](../docs/UI_ASSET_BACKLOG.md)
 - [`docs/UI_KIT.md`](../docs/UI_KIT.md)

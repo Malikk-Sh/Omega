@@ -308,13 +308,13 @@ main
 
 # OMEGA — Current Project Snapshot
 
-> Source commit: `ebbbafc1326068456e5a56338ed7fd600c0441f7`  
-> Source commit date: `2026-09-10T21:23:07+03:00`  
+> Source commit: `2174355206cb54e39d9dbc566fe9d00ead63d334`  
+> Source commit date: `2026-09-10T21:23:27+03:00`  
 > Branch when generated: `main`  
-> Package version: `0.6.0-m4`  
-> Latest milestone doc: `docs/MILESTONE_4.md`  
-> Latest milestone: **OMEGA — Milestone 4: BACKUP 0.3**  
-> Status: implementation candidate; M1/M2/M3/M4 automated regressions pass on Vercel preview. Requires project-owner mobile acceptance.
+> Package version: `0.7.0-m5-foundation`  
+> Latest milestone doc: `docs/MILESTONE_5.md`  
+> Latest milestone: **OMEGA — Milestone 5: VERSIONS**  
+> Status: foundation in progress on a stacked branch above M4. The first data/state/routing regressions are implemented; additional 3D snapshot traversal is not yet part of this slice.
 
 ## Production
 
@@ -330,13 +330,14 @@ main
 
 ## npm scripts
 
-- `npm run build` → `tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs`
+- `npm run build` → `tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs && node tests/m5/versions.test.mjs`
 - `npm run test:m0` → `node tests/m0/core.test.mjs`
 - `npm run test:m1` → `node tests/m1/home.test.mjs`
 - `npm run test:m2` → `node tests/m2/investigation.test.mjs`
 - `npm run test:m3` → `node tests/m3/threshold.test.mjs`
 - `npm run test:m4` → `node tests/m4/backup03.test.mjs`
-- `npm run check:m4` → `npm run build`
+- `npm run test:m5` → `node tests/m5/versions.test.mjs`
+- `npm run check:m5` → `npm run build`
 - `npm run ai:sync` → `node scripts/update-ai-context.mjs`
 - `npm run ai:check` → `node scripts/update-ai-context.mjs --check`
 
@@ -357,7 +358,7 @@ The authoritative build command is the current `package.json` script. Do not ass
 Current build:
 
 ```text
-tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs
+tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs && node tests/m5/versions.test.mjs
 ```
 
 ## Freshness rule
@@ -368,177 +369,151 @@ tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigati
 
 # LATEST MILESTONE DOCUMENT
 
-<!-- Source: docs/MILESTONE_4.md -->
-# OMEGA — Milestone 4: BACKUP 0.3
+<!-- Source: docs/MILESTONE_5.md -->
+# OMEGA — Milestone 5: VERSIONS
 
-Status: implementation candidate; M1/M2/M3/M4 automated regressions pass on Vercel preview. Requires project-owner mobile acceptance.
+Status: foundation in progress on a stacked branch above M4. The first data/state/routing regressions are implemented; additional 3D snapshot traversal is not yet part of this slice.
 
 ## Purpose
 
-Milestone 4 is the first real multi-scene slice. The M3 threshold is no longer only a communication surface: it mounts an isolated early V.E.R.A. snapshot, lets the player investigate that world, persists progress while inside it, and returns cleanly to HOME without losing earlier world state.
+Expand the proven M4 backup framework into a sequence of emotionally and mechanically distinct V.E.R.A. snapshots without rebuilding BACKUP 0.3 or moving narrative state into Three.js.
 
-The intended loop is:
+Target sequence:
 
-**open M3 threshold → cross into BACKUP_0_3 → meet V.E.R.A. 0.3 → inspect three physical training samples → classify HUMAN_CONTEXT in OMEGA OS → unlock a pre-persona archive clue → choose how much future truth to tell 0.3 → return to HOME → hear current V.E.R.A. react.**
+```text
+VERA_0_3 — Sandbox / classification token
+VERA_1_0 — Summer House / synthetic photograph
+VERA_2_6 — Research Office / rollback audit
+VERA_4_1 — Containment Night / incident reconstruction
+```
 
-The backup deliberately uses crude neutral geometry and debug-grid language. This is diegetic prototype-space, not final environment art.
+## Foundation implemented
 
-## Implemented
+- Added authored `data/v2/versions-m5.json`.
+- Added stable IDs, scene IDs, environment roles, puzzle IDs, unlock flags and completion flags for 0.3 / 1.0 / 2.6 / 4.1.
+- Added `VersionsProtocol.ts` as framework-free story/state logic.
+- Added `VersionRoute.ts` as a renderer-independent route contract.
+- Added M5 save defaults without changing save schema version.
+- M5 state upgrade does not change the current scene or checkpoint.
+- Existing M4 completion state is preserved.
+- Version unlock order is deterministic:
+  - M3 contact exposes 0.3;
+  - M4 HOME reconciliation exposes 1.0;
+  - VERA_1_0 completion exposes 2.6;
+  - VERA_2_6 completion exposes 4.1.
+- Duplicate version IDs and scene IDs are rejected by definition validation.
+- Authored version order is validated so content cannot silently reorder the narrative arc.
+- Route targets are validated as unique and forbidden from aliasing canonical HOME.
+- Routable snapshots are derived from canonical unlock flags; adding a newly unlocked authored version does not require a new hardcoded route branch.
+- Locked route resolution returns the exact canonical flag that still gates the version.
+- All version routes declare HOME as the canonical return scene.
 
-### Multi-scene lifecycle
+## VERA_1_0 puzzle foundation — Synthetic Photograph
 
-- Added `SceneRouter` with explicit HOME and `backup_0_3` scene IDs.
-- Active scene is persisted in canonical game state.
-- HOME return transform is persisted before entering a backup and restored on return.
-- Old M0–M3 scene IDs migrate to the M4 HOME scene without resetting player flags or filesystem mutations.
-- `WorldRenderer` now mounts one scene root at a time instead of treating the apartment as permanent global geometry.
-- Scene unmount clears focused interaction, entities and scene-specific interaction registry.
-- Unmounted geometry/materials are disposed before the next scene is constructed.
-- HOME lights and props are now scene-owned so they unload with HOME.
-- `WorldBindingSystem.clearTargets()` detaches stale scene targets during traversal.
-- HOME binding targets are re-registered after return and immediately re-evaluated against the same filesystem state.
-- HOME and BACKUP_0_3 use disjoint interaction IDs.
-- Scene routing is transactional: if the destination scene throws during mount, canonical scene/player/return-point state is restored and the previous scene is remounted.
-- The router rejects a second enter/return request once the first transition has changed scene state, preventing duplicate scene mounts from repeated input.
-- A failed mount releases the transition guard and can be retried cleanly.
+The first M5 puzzle compares a source capture record with a reconstructed rendered memory.
 
-### BACKUP_0_3 world
+Source-verified elements:
 
-- Separate bright, neutral training sandbox scene.
-- Primitive V.E.R.A. 0.3 mannequin with a deliberately earlier/debug visual identity.
-- Three physical classification samples:
-  - cup — no executable function, but observer-linked meaning;
-  - image — no executable function, but retained as human context;
-  - relay — replaceable system service defined by function.
-- Dedicated training console.
-- Dedicated return threshold back to HOME.
-- Mobile movement/look/interact controls are reused without introducing a second input stack.
+```text
+window_rain
+wall_clock
+tea_cup
+```
 
-### OMEGA OS / classification puzzle
+Rendered memory elements:
 
-- Added backup-only OMEGA workspace.
-- Training set exposes `object_labels.log`.
-- Classifier remains locked until all three physical samples have been inspected.
-- Wrong `SERVICE` / `NOISE` classifications are rejected without unlocking content.
-- Correct `MEMORY` classification restores `/backups/vera_0_3/archive/human_source.index`.
-- Archive navigation appears only after the correct classification token is issued.
-- Classification attempts and solved state persist.
+```text
+window_rain
+wall_clock
+tea_cup
+red_ribbon
+sea_shell
+```
 
-### Story beat
+The puzzle solution is **derived** as rendered minus source-verified elements:
 
-- V.E.R.A. 0.3 is more literal, curious and trusting of Dr Morr than current V.E.R.A.
-- The archive establishes that a `HUMAN_CONTEXT` source family existed before the VERA_0_3 persona build.
-- The archive records `E.MORR` as ingest owner while explicitly leaving identity mapping disabled.
-- This is evidence of a pre-persona human-source archive, not a full reveal of Vera Morr's identity.
-- The player chooses whether to warn V.E.R.A. 0.3 that future versions will lose memory or only tell her the archive matters.
-- Current V.E.R.A. reacts to both the mounted old snapshot and the player's information choice after returning.
-- Re-entering BACKUP_0_3 keeps solved puzzle/archive/choice state rather than replaying it as a fresh world.
+```text
+red_ribbon
+sea_shell
+```
 
-### Asset policy
+The evaluator therefore does not trust a UI button or hardcoded answer path. It checks the selected stable element IDs against the authored evidence relationship.
 
-- No new final character art is invented for V.E.R.A. 0.3.
-- The 3D snapshot identity is represented with replaceable primitive geometry.
-- Dialogue temporarily uses the existing neutral V.E.R.A. SVG as a fallback and carries an explicit `TODO_ART` marker for a version-specific portrait.
+Rules already covered:
+
+- partial selection is rejected;
+- selecting a source-verified object as generated is rejected;
+- unknown object IDs are rejected descriptively;
+- selection order does not matter;
+- duplicate taps do not create duplicate evidence selections;
+- a valid audit emits clue ID `v10_reconstruction_layer_detected`.
+
+This clue establishes that a later association/reconstruction layer can add meaningful imagery that was absent from the source capture. It must not by itself reveal the full Vera Morr origin.
 
 ## Save compatibility
 
-The save schema version remains `1`.
+`upgradeStateForVersions()` only adds missing M5 flags/counters. It does not:
 
-M4 adds an optional persisted HOME return point under `world.returnPoint` and new flags, but existing M0–M3 saves remain structurally valid. `upgradeStateForBackup03()` adds missing defaults and normalizes legacy HOME scene IDs without wiping:
+- change `world.activeScene`;
+- change the current checkpoint;
+- clear M1–M4 flags;
+- clear filesystem mutations;
+- reset V.E.R.A./NULL relationship state.
 
-- M1 investigation state;
-- `sea_2017.img` mutation state;
-- recovered M2 log;
-- M2 evidence choice / `vera_trust`;
-- M3 NULL trace and process route;
-- open `null_channel.proc` threshold;
-- M3 NULL choice / `null_affinity`.
+A completed M4 save therefore unlocks VERA_1_0 immediately after M5 upgrade without inventing progress inside that snapshot.
 
-A save made inside BACKUP_0_3 reloads inside the backup. A save made after returning reloads in HOME.
+## Automated regression
 
-## Automated acceptance
+`tests/m5/versions.test.mjs` verifies:
 
-`npm run build` runs, in order:
+1. authored version data validates;
+2. version route targets validate;
+3. M4 state survives M5 upgrade;
+4. M5 upgrade does not move scene/checkpoint;
+5. VERA_1_0 unlocks after M4 completion;
+6. VERA_2_6 and VERA_4_1 remain gated in order;
+7. routable version list is derived from canonical unlock flags;
+8. locked versions cannot resolve a route;
+9. newly unlocked versions become routable from authored scene metadata without router-specific conditionals;
+10. every version route returns to canonical HOME;
+11. synthetic-photo generated elements are derived correctly;
+12. partial/over/unknown selections fail;
+13. correct selection succeeds independent of order/duplicate taps;
+14. reward clue ID is deterministic;
+15. M5 puzzle flags/counters persist through SaveManager;
+16. upgrading an older completed-M4 save adds defaults without fake M5 progress.
+
+The repository Vercel integration reached its deployment-rate limit while this stacked branch was being built. That status is infrastructure-only (`Deployment rate limited — retry in 24 hours`), not a compiler/test failure.
+
+To avoid treating the rate limit as validation, the new M5 TypeScript modules were independently compiled with TypeScript 5.8.3 and isolated Node regressions passed:
 
 ```text
-tsc -p tsconfig.json
-M1 HOME regression: PASS
-M2 INVESTIGATION regression: PASS
-M3 THRESHOLD regression: PASS
-M4 BACKUP 0.3 regression: PASS
+M5 isolated regression: PASS
+M5 route contract isolated regression: PASS
 ```
 
-The M4 regression verifies:
+M1–M4 remained green on the final M4 implementation commit before the external rate limit was reached.
 
-- a completed M3 save upgrades without reset;
-- M3 branch choice and open NULL channel survive migration;
-- the M3 threshold HOME binding is still active;
-- HOME and backup interaction IDs do not collide;
-- traversal persists `backup_0_3` as active scene and stores a HOME return transform;
-- repeated enter/return input produces exactly one destination mount;
-- a failed BACKUP mount restores HOME scene state, player transform and return-point state;
-- a failed HOME mount restores the BACKUP scene and preserves the original HOME return point;
-- failed mounts release the transition lock and allow a clean retry;
-- all three physical sample flags are required before classification;
-- invalid classification is rejected;
-- valid `MEMORY` classification unlocks the archive;
-- first V.E.R.A. 0.3 encounter, classification and archive state survive save/load;
-- reload while inside the backup remains inside the backup;
-- returning restores HOME transform;
-- returning HOME reattaches the old threshold binding;
-- current V.E.R.A. reaction state persists;
-- reload after return stays in HOME;
-- new game/reset starts in HOME with NULL channel and backup archive locked.
+## Next implementation slice
 
-The Vercel preview completes `npm run build` successfully with all four milestone regressions passing, including the transition rollback/double-input hardening checks.
+Wire VERA_1_0 into the existing scene lifecycle:
 
-## Manual mobile acceptance
+- connect the generic version route contract to the transactional M4 `SceneRouter` rather than creating a second navigation system;
+- add a version-selection surface that only exposes unlocked snapshots;
+- build a distinct Summer House primitive environment rather than recoloring HOME;
+- stage V.E.R.A. 1.0 as a more socially developed but still trusting version;
+- expose source-photo metadata through DOM OMEGA OS;
+- make rendered-memory objects use stable IDs matching the synthetic-photo evidence contract;
+- persist entry, puzzle solution, clue read, choice and HOME return;
+- keep M1–M5 regressions green.
 
-Use the M4 preview first, then the normal production URL after merge.
+## Non-goals of the foundation slice
 
-1. Continue from a completed M3 save. Do not reset.
-2. Confirm the existing photo/log/threshold state is unchanged.
-3. Approach the open threshold and interact once.
-4. Choose **Перейти в BACKUP 0.3**.
-5. Confirm one transition occurs; the HOME apartment must not remain visible or interactable behind the backup.
-6. Move/look around the bright prototype sandbox using touch controls.
-7. Meet V.E.R.A. 0.3 and confirm her wording feels earlier, more literal and more trusting of Dr Morr.
-8. Inspect the cup, image and relay. Each physical target should trigger once per tap without skipping dialogue.
-9. Approach the training console and open OMEGA OS.
-10. Before all samples are inspected, confirm classifier buttons are disabled.
-11. After all samples are inspected, try an incorrect category; confirm it is rejected and ARCHIVE remains unavailable.
-12. Select **MEMORY**; confirm ARCHIVE appears.
-13. Open `human_source.index` and confirm it states that HUMAN_CONTEXT predates persona 0.3 while identity mapping remains disabled.
-14. Close OMEGA OS and complete the V.E.R.A. 0.3 truth/limited-information choice.
-15. Reload before returning; confirm the player remains in BACKUP_0_3 with solved state preserved.
-16. Use the backup threshold to return to HOME.
-17. Confirm HOME contains exactly one apartment scene and no duplicate backup geometry/input response.
-18. Confirm the M3 threshold is still open and `sea_2017.img` is still present or absent exactly as before traversal.
-19. Confirm current V.E.R.A. reacts to the old snapshot and to the branch chosen with V.E.R.A. 0.3.
-20. Reload again; confirm the player remains in HOME and the M4 reaction is not duplicated.
-21. Re-enter BACKUP_0_3; confirm solved archive/choice state remains solved and the scene remains interactable.
-22. Use the OMEGA reset action; confirm a fresh game starts in HOME with the M3 channel and M4 archive locked.
-23. On iOS/Android portrait and landscape, confirm safe-area spacing, dialogue choices and classifier buttons remain comfortably touchable and no action double-fires.
-
-## Expected player understanding after M4
-
-The player should now believe that:
-
-1. V.E.R.A. has existed in multiple persona builds and the current personality is not the original state.
-2. Older snapshots can contain information current V.E.R.A. cannot directly recall.
-3. Some human-context material predates V.E.R.A. 0.3 itself.
-4. Dr Morr was already involved with the early training system.
-5. The absence of a memory can itself be evidence of versioning or deliberate loss.
-
-The player should **not** yet have a definitive identity mapping between V.E.R.A. and Vera Morr, nor a final explanation of NULL.
-
-## Deliberately unresolved
-
-- V.E.R.A. 0.3 still uses placeholder dialogue portrait art.
-- No production animation/audio or final backup environment assets are required for M4 acceptance.
-- The HUMAN_CONTEXT archive intentionally stops before a full Vera Morr identity reveal.
-- NULL's exact role remains unresolved.
-- The next milestone must build on the now-proven multi-scene lifecycle rather than bypassing it with a parallel navigation system.
+- no VERA_2_6 or VERA_4_1 3D environment yet;
+- no protected memory-token economy yet;
+- no final character art/model/audio;
+- no Vera Morr identity reveal;
+- no alternative navigation system parallel to M4 SceneRouter.
 
 ---
 

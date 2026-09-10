@@ -1,8 +1,11 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Recent Changes
 
-Generated from commit history ending at source commit `7a60b3e00a027ac4035f239e905536eaee016e18`.
+Generated from commit history ending at source commit `9fc7f5907641a35353be373ffb27bfe39c36a32d`.
 
+- `9fc7f59` — 2026-09-10T20:22:37+03:00 — Verify generated AI context before committing
+- `798a852` — 2026-09-10T20:22:26+03:00 — Clarify AI context freshness semantics
+- `3e1b26e` — 2026-09-10T17:20:11Z — chore(ai-context): auto-sync [skip ci]
 - `7a60b3e` — 2026-09-10T20:19:56+03:00 — Make AI context freshness deterministic after auto-sync commits
 - `2488c11` — 2026-09-10T17:18:07Z — chore(ai-context): auto-sync [skip ci]
 - `5882778` — 2026-09-10T20:17:56+03:00 — Fix AI context workflow untracked detection
@@ -20,6 +23,3 @@ Generated from commit history ending at source commit `7a60b3e00a027ac4035f239e9
 - `39ac2bd` — 2026-09-10T20:07:36+03:00 — AI context: add GDD source part 05
 - `fd75dee` — 2026-09-10T20:06:59+03:00 — AI context: add GDD source part 04
 - `e1079df` — 2026-09-10T20:06:23+03:00 — AI context: add GDD source part 03
-- `f9295ce` — 2026-09-10T20:05:47+03:00 — AI context: add GDD source part 02
-- `c81cae7` — 2026-09-10T20:05:10+03:00 — AI context: add GDD source part 01
-- `fd0eefe` — 2026-09-10T19:45:17+03:00 — M3: document threshold milestone acceptance

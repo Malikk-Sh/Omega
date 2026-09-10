@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Source Index for AI
 
-Generated for source commit `7a60b3e00a027ac4035f239e905536eaee016e18`.
+Generated for source commit `9fc7f5907641a35353be373ffb27bfe39c36a32d`.
 
 These are repository links, not copied source. Always inspect the live file before changing it.
 

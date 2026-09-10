@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generator": "scripts/update-ai-context.mjs",
-  "sourceCommit": "7a60b3e00a027ac4035f239e905536eaee016e18",
-  "sourceCommitDate": "2026-09-10T20:19:56+03:00",
+  "sourceCommit": "9fc7f5907641a35353be373ffb27bfe39c36a32d",
+  "sourceCommitDate": "2026-09-10T20:22:37+03:00",
   "branch": "main",
   "packageVersion": "0.5.0-m3",
   "latestMilestone": 3,
@@ -10,9 +10,9 @@
   "latestMilestoneTitle": "OMEGA — Milestone 3: THRESHOLD",
   "hashAlgorithm": "sha256",
   "files": {
-    ".github/workflows/sync-ai-context.yml": "58a3fb1ffe8adab5a0ea5f2aa729fa308d27bb52472f3fc53f1745d09ccdca08",
+    ".github/workflows/sync-ai-context.yml": "75cd112773e7a71a629577008ffb2452c2c3bc56edfd8e3e4ab98ecf4e76abcb",
     "ai-context/HANDOFF_BASE.md": "95d3234d33d8723dbecbef0f65ad89d9df7b8c39805f7c4edf2eb52807dc7c23",
-    "ai-context/README.md": "6ad06e2dc71b5c857e570abcd49df9c754292cdea884df2528ea67992e2bd957",
+    "ai-context/README.md": "171a7388ae6427a58e90ccea09571efccb2f58288f5b0664fa8ec7f4178c7bba",
     "ai-context/ROADMAP.md": "a64ccda4c0d5b99bd6a753d16fce9d9f0bb55c27fd105017e7ca13087d6c4e7c",
     "ai-context/gdd-source/README.md": "d67569745b1f8bbb49c696b2ca278d8e9e57dfea861942e56b0de3bcf027f2e3",
     "ai-context/gdd-source/part-01.md": "f3cde01f35b2fefd47f5fbd5450ecbf0af3f2bc5b97ca0c8ec65d3cec8941b38",

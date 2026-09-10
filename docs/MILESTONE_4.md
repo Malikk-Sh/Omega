@@ -27,6 +27,9 @@ The backup deliberately uses crude neutral geometry and debug-grid language. Thi
 - `WorldBindingSystem.clearTargets()` detaches stale scene targets during traversal.
 - HOME binding targets are re-registered after return and immediately re-evaluated against the same filesystem state.
 - HOME and BACKUP_0_3 use disjoint interaction IDs.
+- Scene routing is transactional: if the destination scene throws during mount, canonical scene/player/return-point state is restored and the previous scene is remounted.
+- The router rejects a second enter/return request once the first transition has changed scene state, preventing duplicate scene mounts from repeated input.
+- A failed mount releases the transition guard and can be retried cleanly.
 
 ### BACKUP_0_3 world
 
@@ -101,6 +104,10 @@ The M4 regression verifies:
 - the M3 threshold HOME binding is still active;
 - HOME and backup interaction IDs do not collide;
 - traversal persists `backup_0_3` as active scene and stores a HOME return transform;
+- repeated enter/return input produces exactly one destination mount;
+- a failed BACKUP mount restores HOME scene state, player transform and return-point state;
+- a failed HOME mount restores the BACKUP scene and preserves the original HOME return point;
+- failed mounts release the transition lock and allow a clean retry;
 - all three physical sample flags are required before classification;
 - invalid classification is rejected;
 - valid `MEMORY` classification unlocks the archive;
@@ -112,7 +119,7 @@ The M4 regression verifies:
 - reload after return stays in HOME;
 - new game/reset starts in HOME with NULL channel and backup archive locked.
 
-The Vercel preview for the implementation commit completes `npm run build` successfully with all four milestone regressions passing.
+The Vercel preview completes `npm run build` successfully with all four milestone regressions passing, including the transition rollback/double-input hardening checks.
 
 ## Manual mobile acceptance
 

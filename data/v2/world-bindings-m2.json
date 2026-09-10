@@ -1,0 +1,14 @@
+[
+  {
+    "id": "home.sea_2017_frame",
+    "rule": { "type": "file_exists", "path": "/memories/sea_2017.img" },
+    "targetId": "apartment.photo_frame",
+    "action": "show"
+  },
+  {
+    "id": "home.null_trace",
+    "rule": { "type": "file_exists", "path": "/system/logs/recovery_1703.log" },
+    "targetId": "apartment.null_trace",
+    "action": "show"
+  }
+]

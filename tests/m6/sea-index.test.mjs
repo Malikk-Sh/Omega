@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createInitialGameState } from "../../js/v2/runtime/core/GameState.js";
 import {
   SEA_2017_INDEX_FIELD_IDS,
+  evaluateArchiveKeySources,
   evaluateSea2017Access,
   evaluateSeaIndex,
   parseSeaIndexAssignments,
@@ -16,6 +17,7 @@ const definition = JSON.parse(await readFile(new URL("../../data/v2/sea-2017-m6.
 assert.deepEqual(validateSea2017Definition(definition), [], "authored Sea 2017 definition must validate");
 assert.deepEqual(definition.index.fields.map(field => field.id), SEA_2017_INDEX_FIELD_IDS, "P12 must keep the five authored cross-media channels in order");
 assert.equal(definition.access.minimumBackupClues, 3, "Sea 2017 must require at least three backup clues");
+assert.equal(definition.archiveKey.sourceEvidencePaths.length, 2, "archive key must correlate two version evidence sources");
 
 const state = createInitialGameState();
 const originalScene = state.world.activeScene;
@@ -23,6 +25,7 @@ const originalCheckpoint = state.checkpoint;
 upgradeStateForSea2017(state);
 assert.equal(state.world.activeScene, originalScene, "M6 upgrader must not rewrite active scene");
 assert.equal(state.checkpoint, originalCheckpoint, "M6 upgrader must not invent checkpoint progress");
+assert.equal(state.flags.m6_archive_key_attempts, 0);
 assert.equal(state.flags.m6_sea_index_solved, false);
 assert.equal(state.flags.m6_sea_index_attempts, 0);
 assert.deepEqual(parseSeaIndexAssignments(state), {});
@@ -37,6 +40,17 @@ state.flags.m5_v26_clue_read = true;
 access = evaluateSea2017Access(state, definition);
 assert.equal(access.backupCluesFound, 3);
 assert.equal(access.ok, false, "three backup clues alone must not bypass metadata and hidden archive key");
+
+const [prePersonaPath, containmentPath] = definition.archiveKey.sourceEvidencePaths;
+let keyEvaluation = evaluateArchiveKeySources(definition, [prePersonaPath]);
+assert.equal(keyEvaluation.ok, false, "one source cannot reconstruct the hidden archive key");
+assert.deepEqual(keyEvaluation.missingPaths, [containmentPath]);
+keyEvaluation = evaluateArchiveKeySources(definition, [prePersonaPath, "/memories/sea_2017.img"]);
+assert.equal(keyEvaluation.ok, false, "extra unrelated evidence must not reconstruct the hidden key");
+assert.deepEqual(keyEvaluation.extraPaths, ["/memories/sea_2017.img"]);
+keyEvaluation = evaluateArchiveKeySources(definition, [containmentPath, prePersonaPath, prePersonaPath]);
+assert.equal(keyEvaluation.ok, true, "the authored two-source correlation must be order-independent and duplicate-safe");
+assert.equal(keyEvaluation.archiveKey, "M017-SEA-ARCHIVE");
 
 state.flags.m2_photo_scanned = true;
 access = evaluateSea2017Access(state, definition);

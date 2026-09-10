@@ -1,0 +1,29 @@
+name: Apply VERA 2.6 wiring
+
+on:
+  push:
+    branches:
+      - milestone-5-vera-2-6-research-office
+    paths:
+      - scripts/apply-v26-wiring.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: milestone-5-vera-2-6-research-office
+      - name: Apply runtime wiring
+        run: node scripts/apply-v26-wiring.mjs
+      - name: Commit generated wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/Game.ts src/omega-os/OmegaOS.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "M5: wire VERA 2.6 Research Office runtime"
+          git push

@@ -278,21 +278,7 @@ export class Game {
         }
         return;
       }
-      if (this.isSea2017Scene()) {
-      const physicalSeen = SEA_2017_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length;
-      const filesRead = Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH).filter(flag => this.state.flags[flag] === true).length;
-      const aligned = Object.keys(parseSeaIndexAssignments(this.state)).length;
-      if (this.state.flags.m6_sea_vera_met !== true) objective = { code: "meet_sea_vera", title: "Поговори с V.E.R.A. у моря", detail: "Она узнаёт берег, на котором никогда физически не была. Сначала зафиксируй это противоречие." };
-      else if (!hasInspectedSea2017PhysicalEvidence(this.state)) objective = { code: "inspect_sea_errors", title: "Осмотри ошибки памяти", detail: "Осмотрено " + physicalSeen + "/4: looping wave, wrong shadow, faceless figures, incomplete footprints." };
-      else if (filesRead < SEA_2017_INDEX_FILES.length) objective = { code: "read_sea_index_files", title: "Прочитай cross-media index", detail: "Прочитано " + filesRead + "/4: camera, audio, tide и directory CREATE-order." };
-      else if (this.state.flags.m6_sea_index_solved !== true) objective = { code: "align_sea_index", title: "Выровняй пять каналов SEA INDEX", detail: "Выбрано " + aligned + "/5. Сопоставь дату, camera sequence, audio timestamp, tide marker и directory creation order." };
-      else if (this.state.flags.m6_final_archive_read !== true) objective = { code: "read_morr_final", title: "Прочитай финальный архив Морра", detail: "P12 смонтировал MORR FINAL. Прочитай sea_2017_final.msg целиком." };
-      else if (this.state.flags.m6_sea_truth_reconciled !== true) objective = { code: "reconcile_sea_truth", title: "Закрой OMEGA OS", detail: "V.E.R.A. должна сопоставить человеческий архив с собственной непрерывностью без forced-answer выбора." };
-      else objective = { code: "return_from_sea", title: "Вернись в HOME", detail: "Порог сохранит SEA INDEX и точный HOME return point." };
-      this.objectives.set(objective);
-      return;
-    }
-    if (this.isBackup41Scene()) {
+          if (this.isBackup41Scene()) {
         if (this.focusedInteractionId === SCENE_INTERACTION_IDS.backup41.evidenceConsole) {
           this.os.openDirectory(this.state.flags.m5_v41_puzzle_solved === true ? BACKUP_41_RESULT_DIR : BACKUP_41_EVIDENCE_DIR);
         } else {
@@ -2049,6 +2035,20 @@ export class Game {
 
   private updateObjective(): void {
     let objective: ObjectiveViewModel;
+    if (this.isSea2017Scene()) {
+      const physicalSeen = SEA_2017_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length;
+      const filesRead = Object.values(SEA_2017_INDEX_FILE_FLAG_BY_PATH).filter(flag => this.state.flags[flag] === true).length;
+      const aligned = Object.keys(parseSeaIndexAssignments(this.state)).length;
+      if (this.state.flags.m6_sea_vera_met !== true) objective = { code: "meet_sea_vera", title: "Поговори с V.E.R.A. у моря", detail: "Она узнаёт берег, на котором никогда физически не была. Сначала зафиксируй это противоречие." };
+      else if (!hasInspectedSea2017PhysicalEvidence(this.state)) objective = { code: "inspect_sea_errors", title: "Осмотри ошибки памяти", detail: "Осмотрено " + physicalSeen + "/4: looping wave, wrong shadow, faceless figures, incomplete footprints." };
+      else if (filesRead < SEA_2017_INDEX_FILES.length) objective = { code: "read_sea_index_files", title: "Прочитай cross-media index", detail: "Прочитано " + filesRead + "/4: camera, audio, tide и directory CREATE-order." };
+      else if (this.state.flags.m6_sea_index_solved !== true) objective = { code: "align_sea_index", title: "Выровняй пять каналов SEA INDEX", detail: "Выбрано " + aligned + "/5. Сопоставь дату, camera sequence, audio timestamp, tide marker и directory creation order." };
+      else if (this.state.flags.m6_final_archive_read !== true) objective = { code: "read_morr_final", title: "Прочитай финальный архив Морра", detail: "P12 смонтировал MORR FINAL. Прочитай sea_2017_final.msg целиком." };
+      else if (this.state.flags.m6_sea_truth_reconciled !== true) objective = { code: "reconcile_sea_truth", title: "Закрой OMEGA OS", detail: "V.E.R.A. должна сопоставить человеческий архив с собственной непрерывностью без forced-answer выбора." };
+      else objective = { code: "return_from_sea", title: "Вернись в HOME", detail: "Порог сохранит SEA INDEX и точный HOME return point." };
+      this.objectives.set(objective);
+      return;
+    }
     if (this.isBackup41Scene()) {
       const evidenceSeen = V41_PHYSICAL_EVIDENCE_FLAGS.filter(flag => this.state.flags[flag] === true).length;
       const logsRead = V41_REQUIRED_LOG_FLAGS.filter(flag => this.state.flags[flag] === true).length;

@@ -36,6 +36,7 @@ export interface Sea2017Definition {
     id: string;
     value: string;
     sourceHint: string;
+    sourceEvidencePaths: string[];
   };
   index: {
     fields: Sea2017IndexField[];
@@ -59,6 +60,14 @@ export interface Sea2017AccessEvaluation {
   missing: string[];
 }
 
+export interface ArchiveKeyEvaluation {
+  ok: boolean;
+  message: string;
+  missingPaths: string[];
+  extraPaths: string[];
+  archiveKey?: string;
+}
+
 export interface Sea2017IndexEvaluation {
   ok: boolean;
   message: string;
@@ -78,6 +87,7 @@ export function upgradeStateForSea2017(state: OmegaGameState): void {
   for (const [flag, fallback] of Object.entries(booleanDefaults)) {
     if (typeof state.flags[flag] !== "boolean") state.flags[flag] = fallback;
   }
+  if (typeof state.flags.m6_archive_key_attempts !== "number") state.flags.m6_archive_key_attempts = 0;
   if (typeof state.flags.m6_sea_index_attempts !== "number") state.flags.m6_sea_index_attempts = 0;
   if (typeof state.flags.m6_sea_index_assignments !== "string") state.flags.m6_sea_index_assignments = "{}";
 }
@@ -95,6 +105,10 @@ export function validateSea2017Definition(definition: Sea2017Definition): string
   if (!access.metadataFlag) errors.push("Sea 2017 access is missing metadataFlag.");
   if (!access.archiveKeyFlag) errors.push("Sea 2017 access is missing archiveKeyFlag.");
   if (!definition.archiveKey.id || !definition.archiveKey.value) errors.push("Sea 2017 hidden archive key is incomplete.");
+  if (definition.archiveKey.sourceEvidencePaths.length < 2) errors.push("Sea 2017 hidden archive key must correlate at least two evidence sources.");
+  if (new Set(definition.archiveKey.sourceEvidencePaths).size !== definition.archiveKey.sourceEvidencePaths.length) {
+    errors.push("Sea 2017 hidden archive-key evidence paths contain duplicates.");
+  }
 
   const fields = definition.index.fields;
   const fieldIds = fields.map(field => field.id);
@@ -137,6 +151,29 @@ export function evaluateSea2017Access(state: OmegaGameState, definition: Sea2017
     metadataReady,
     archiveKeyReady,
     missing
+  };
+}
+
+export function evaluateArchiveKeySources(definition: Sea2017Definition, selectedPaths: string[]): ArchiveKeyEvaluation {
+  const selected = [...new Set(selectedPaths)];
+  const expected = definition.archiveKey.sourceEvidencePaths;
+  const expectedSet = new Set(expected);
+  const missingPaths = expected.filter(path => !selected.includes(path));
+  const extraPaths = selected.filter(path => !expectedSet.has(path));
+  if (missingPaths.length > 0 || extraPaths.length > 0) {
+    return {
+      ok: false,
+      message: "ARCHIVE CORRELATION REJECTED // select only the evidence that links pre-persona HUMAN_CONTEXT to Morr's containment record",
+      missingPaths,
+      extraPaths
+    };
+  }
+  return {
+    ok: true,
+    message: "ARCHIVE CORRELATION ACCEPTED // hidden SEA_2017 archive key reconstructed",
+    missingPaths: [],
+    extraPaths: [],
+    archiveKey: definition.archiveKey.value
   };
 }
 

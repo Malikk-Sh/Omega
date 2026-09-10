@@ -1,0 +1,10 @@
+import { OmegaUI } from '../js/v2/ui/omega-ui.js';
+const ui = new OmegaUI(document.body, '..');
+const term = ui.createTerminal({ lines:['OMEGA OS v2','user@omega:~$ help','filesystem  terminal  processes'] });
+const win = ui.createWindow({ title:'Terminal', content:term.terminal, mobileMode:'sheet' });
+document.querySelector('#terminal-window').append(win);
+const dialogue = ui.createDialogue({ text:'Ты ведь останешься ещё немного?', choices:[{id:'stay',label:'Да, останусь.'},{id:'leave',label:'Мне нужно идти.'}] });
+dialogue.style.position='relative'; dialogue.style.left='auto'; dialogue.style.right='auto'; dialogue.style.bottom='auto';
+document.querySelector('#dialogue').append(dialogue);
+document.querySelector('#toast').onclick=()=>ui.showToast('Сектор памяти восстановлен.',{tone:'vera'});
+document.querySelector('#corrupt').onclick=()=>document.body.dataset.corrupted=document.body.dataset.corrupted==='true'?'false':'true';

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "m0.photo.file_visibility",
+    "rule": { "type": "file_exists", "path": "/memories/test_photo.img" },
+    "targetId": "apartment.photo_frame",
+    "action": "show"
+  }
+]

@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const AUTO_COMMIT_PREFIX = "chore(ai-context): auto-sync";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const root = resolve(scriptDir, "..");
 const aiDir = join(root, "ai-context");
@@ -77,9 +78,14 @@ const gddParts = walk("ai-context/gdd-source", (path) => /part-\d+\.md$/u.test(p
 if (!gddParts.length) throw new Error("No ai-context/gdd-source/part-*.md files found.");
 const fullGdd = gddParts.map(read).join("");
 
-const sourceCommit = process.env.AI_CONTEXT_SOURCE_SHA || process.env.GITHUB_SHA || shell(["rev-parse", "HEAD"]);
+const headCommit = shell(["rev-parse", "HEAD"]);
+const headSubject = shell(["show", "-s", "--format=%s", headCommit], "");
+const inferredSourceCommit = headSubject.startsWith(AUTO_COMMIT_PREFIX)
+  ? shell(["rev-parse", "HEAD^"], headCommit)
+  : headCommit;
+const sourceCommit = process.env.AI_CONTEXT_SOURCE_SHA || process.env.GITHUB_SHA || inferredSourceCommit;
 const sourceCommitDate = shell(["show", "-s", "--format=%cI", sourceCommit], shell(["show", "-s", "--format=%cI", "HEAD"]));
-const branch = process.env.GITHUB_REF_NAME || shell(["branch", "--show-current"], "unknown");
+const branch = process.env.GITHUB_REF_NAME || shell(["branch", "--show-current"], "main");
 
 const dependencies = {
   ...(packageJson.dependencies ?? {}),
@@ -136,7 +142,7 @@ ${scripts.build ?? "No build script declared"}
 
 ## Freshness rule
 
-This file is generated from repository state. If its source commit is older than current \`main\`, run \`npm run ai:sync\` or wait for the AI-context GitHub Action before relying on it.
+\`sourceCommit\` is the latest **substantive repository commit** used to build this context. Because the sync workflow writes generated files in a follow-up \`${AUTO_COMMIT_PREFIX}\` commit, current \`main\` may legitimately be one generated-only child commit ahead of \`sourceCommit\`. Use \`npm run ai:check\` and \`CONTEXT_MANIFEST.json\` hashes as the canonical freshness check rather than requiring exact HEAD SHA equality.
 `;
 writeGenerated("ai-context/PROJECT_SNAPSHOT.md", snapshot);
 
@@ -151,13 +157,7 @@ const milestoneBundle = [
   "",
   `Latest detected milestone: **${latestMilestoneTitle}**`,
   "",
-  ...milestoneFiles.flatMap((path) => [
-    "---",
-    "",
-    `<!-- Source: ${path} -->`,
-    read(path).trim(),
-    ""
-  ])
+  ...milestoneFiles.flatMap((path) => ["---", "", `<!-- Source: ${path} -->`, read(path).trim(), ""])
 ].join("\n");
 writeGenerated("ai-context/MILESTONES.md", milestoneBundle);
 
@@ -169,7 +169,7 @@ const sourceGroups = [
   ["Current v2 styles / shell", walk("v2", (path) => /\.(css|html|js)$/u.test(path))],
   ["Canonical project docs", walk("docs", (path) => path.endsWith(".md"))],
   ["Asset manifest / asset docs", ["assets/v2/asset-manifest.json", "assets/v2/README.md"].filter(exists)],
-  ["AI authoritative inputs", ["ai-context/HANDOFF_BASE.md", "ai-context/ROADMAP.md", ...gddParts].filter(exists)]
+  ["AI authoritative inputs", ["ai-context/README.md", "ai-context/HANDOFF_BASE.md", "ai-context/ROADMAP.md", "ai-context/gdd-source/README.md", ...gddParts].filter(exists)]
 ];
 
 const sourceIndex = [
@@ -193,11 +193,11 @@ const sourceIndex = [
 ].join("\n");
 writeGenerated("ai-context/SOURCE_INDEX.md", sourceIndex);
 
-const recentRaw = shell(["log", "-20", "--pretty=format:%h%x09%cI%x09%s"], "");
+const recentRaw = shell(["log", "-20", sourceCommit, "--pretty=format:%h%x09%cI%x09%s"], "");
 const recentChanges = `<!-- AUTO-GENERATED. Do not edit manually. -->
 # OMEGA — Recent Changes
 
-Generated from the commit history available to the sync process.
+Generated from commit history ending at source commit \`${sourceCommit}\`.
 
 ${recentRaw ? recentRaw.split("\n").map((line) => {
   const [sha, date, ...message] = line.split("\t");
@@ -210,11 +210,15 @@ const manifestInputs = new Set([
   "package.json",
   "tsconfig.json",
   "vercel.json",
+  ".github/workflows/sync-ai-context.yml",
+  "scripts/update-ai-context.mjs",
   "docs/OMEGA_IMPLEMENTATION_CONTRACT.md",
   "docs/UI_ASSET_BACKLOG.md",
   "assets/v2/asset-manifest.json",
+  "ai-context/README.md",
   "ai-context/HANDOFF_BASE.md",
   "ai-context/ROADMAP.md",
+  "ai-context/gdd-source/README.md",
   ...gddParts,
   ...milestoneFiles,
   ...walk("src", (path) => path.endsWith(".ts") || path.endsWith(".d.ts")),
@@ -278,8 +282,8 @@ ${roadmap}
 
 # Instructions to the next AI
 
-1. Confirm this handoff source commit against current \`main\`.
-2. If they differ, inspect live source and run \`npm run ai:sync\` before relying on generated facts.
+1. Read \`PROJECT_SNAPSHOT.md\` and \`CONTEXT_MANIFEST.json\`, then inspect live \`main\` source before coding.
+2. A generated-only \`${AUTO_COMMIT_PREFIX}\` commit may be one child ahead of \`sourceCommit\`; this is normal. Run \`npm run ai:check\` to verify actual freshness.
 3. Run the current \`npm run build\` before implementation.
 4. Preserve every existing regression test and save migration path.
 5. Use a milestone/feature branch, Vercel preview, compare, then fast-forward \`main\` without force.

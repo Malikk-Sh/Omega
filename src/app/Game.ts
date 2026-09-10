@@ -8,15 +8,18 @@ import { FileSystemService, type FileSystemDefinition } from "../omega-os/FileSy
 import { WorldBindingSystem, type WorldBindingDefinition } from "../world/WorldBinding.js";
 import { InputManager } from "../player/InputManager.js";
 import { WorldRenderer, type InteractionFocus } from "../render/WorldRenderer.js";
-import { OmegaOS, type RecoveryResponse } from "../omega-os/OmegaOS.js";
+import { OmegaOS, type ProcessMonitorState, type RecoveryResponse } from "../omega-os/OmegaOS.js";
 import { DialogueController, type DialogueChoiceOption, type DialogueLine } from "../story/DialogueController.js";
 import { ObjectiveController, type ObjectiveViewModel } from "../story/ObjectiveController.js";
+import { evaluateQuarantineRoute, NULL_FIRST_CONTACT } from "../story/ThresholdProtocol.js";
 
 const AUTOSAVE_SLOT = "omega_autosave";
 const LEGACY_M0_SLOT = "m0_autosave";
 const SEA_MEMORY = "/memories/sea_2017.img";
 const RECOVERY_LOG = "/system/logs/recovery_1703.log";
+const NULL_CHANNEL = "/system/processes/null_channel.proc";
 const SEA_BINDING = "home.sea_2017_frame";
+const NULL_PORTRAIT = "../assets/v2/entities/null/null_doorway.svg";
 
 export class Game {
   private state: OmegaGameState = createInitialGameState();
@@ -34,6 +37,7 @@ export class Game {
   private autosaveTimer: number | null = null;
   private focusedInteractionId: string | null = null;
   private choiceSequenceRunning = false;
+  private nullSequenceRunning = false;
 
   async start(): Promise<void> {
     const canvas = document.querySelector<HTMLCanvasElement>("#m0-world");
@@ -43,8 +47,8 @@ export class Game {
     if (!canvas || !osRoot || !dialogueRoot || !objectiveRoot) throw new Error("HOME DOM shell is incomplete.");
 
     const [filesystemDefinition, bindingDefinitions] = await Promise.all([
-      this.content.loadJson<FileSystemDefinition>("../data/v2/filesystem-m2.json"),
-      this.content.loadJson<WorldBindingDefinition[]>("../data/v2/world-bindings-m2.json"),
+      this.content.loadJson<FileSystemDefinition>("../data/v2/filesystem-m3.json"),
+      this.content.loadJson<WorldBindingDefinition[]>("../data/v2/world-bindings-m3.json"),
       this.assets.load("../assets/v2/asset-manifest.json").catch(error => {
         console.warn("Asset manifest is optional for primitive HOME geometry.", error);
       })
@@ -56,7 +60,7 @@ export class Game {
     });
     if (!loaded) loaded = await this.saves.load(LEGACY_M0_SLOT).catch(() => null);
     if (loaded) this.state = loaded;
-    this.upgradeStateForInvestigation();
+    this.upgradeStateForThreshold();
 
     this.filesystem = new FileSystemService(filesystemDefinition, this.state, this.events);
     this.renderer = new WorldRenderer(canvas, this.input, this.state);
@@ -66,13 +70,16 @@ export class Game {
 
     this.registerRequiredBindingTarget("apartment.photo_frame");
     this.registerRequiredBindingTarget("apartment.null_trace");
+    this.registerRequiredBindingTarget("apartment.threshold_corridor");
 
     this.os = new OmegaOS(osRoot, this.filesystem, this.events, {
       onSaveRequested: () => void this.saveNow(),
       onResetRequested: () => void this.resetHome(),
       onEvidenceInspected: path => this.handleEvidenceInspected(path),
       onFileRead: path => this.handleFileRead(path),
-      onRecoveryRequested: key => this.handleRecoveryRequested(key)
+      onRecoveryRequested: key => this.handleRecoveryRequested(key),
+      getProcessMonitorState: () => this.getProcessMonitorState(),
+      onProcessRouteRequested: route => this.handleProcessRouteRequested(route)
     });
 
     this.renderer.setInteractionCallbacks({
@@ -90,8 +97,12 @@ export class Game {
         this.os.setVisible(false);
         return;
       }
-      if (this.focusedInteractionId === "computer") this.os.setVisible(true);
-      else this.flashMessage("Подойди к компьютеру, чтобы открыть OMEGA OS");
+      if (this.focusedInteractionId === "computer") {
+        this.os.render();
+        this.os.setVisible(true);
+      } else {
+        this.flashMessage("Подойди к компьютеру, чтобы открыть OMEGA OS");
+      }
     });
     this.input.onAction("interact", () => {
       if (this.dialogue.isActive()) {
@@ -109,9 +120,12 @@ export class Game {
       this.scheduleAutosave();
       if (path === SEA_MEMORY) {
         this.updateStatus(!deleted);
-        if (!this.dialogue.isActive()) this.flashMessage(deleted ? "Связь с памятью разорвана" : "Память восстановлена");
+        if (!this.dialogue.isActive()) {
+          this.flashMessage(deleted ? "Связь с памятью разорвана" : "Память восстановлена");
+        }
       }
       if (path === RECOVERY_LOG && !deleted) this.renderer.triggerRecoveryPulse();
+      if (path === NULL_CHANNEL && !deleted) this.renderer.triggerThresholdPulse();
     });
     this.events.on("binding:changed", ({ bindingId, active }) => {
       if (bindingId === SEA_BINDING) this.updateStatus(active);
@@ -126,7 +140,10 @@ export class Game {
     this.renderer.start();
     this.updateStatus(this.filesystem.exists(SEA_MEMORY));
     this.updateObjective();
-    window.addEventListener("pagehide", () => { this.renderer.writePlayerState(this.state); void this.saveNow(); });
+    window.addEventListener("pagehide", () => {
+      this.renderer.writePlayerState(this.state);
+      void this.saveNow();
+    });
     window.setTimeout(() => void this.playIntroIfNeeded(), 500);
   }
 
@@ -136,9 +153,10 @@ export class Game {
     this.bindings.registerTarget(targetId, target);
   }
 
-  private upgradeStateForInvestigation(): void {
-    this.state.world.activeScene = "apartment_home_m2";
+  private upgradeStateForThreshold(): void {
+    this.state.world.activeScene = "apartment_home_m3";
     if (!this.state.filesystem.entries[SEA_MEMORY]) this.state.filesystem.entries[SEA_MEMORY] = { deleted: false };
+
     const booleanDefaults: Record<string, boolean> = {
       m1_intro_seen: false,
       m1_photo_inspected: false,
@@ -150,13 +168,29 @@ export class Game {
       m2_log_read: false,
       m2_choice_made: false,
       m2_told_vera: false,
-      m2_hid_evidence: false
+      m2_hid_evidence: false,
+      m3_trace_touched: false,
+      m3_route_solved: false,
+      m3_threshold_open: false,
+      m3_null_contact: false,
+      m3_contact_choice_made: false,
+      m3_answered_null: false,
+      m3_refused_null: false,
+      m3_channel_file_read: false
     };
     for (const [key, value] of Object.entries(booleanDefaults)) {
       if (typeof this.state.flags[key] !== "boolean") this.state.flags[key] = value;
     }
     if (typeof this.state.flags.vera_trust !== "number") this.state.flags.vera_trust = 50;
-    this.state.checkpoint = this.state.flags.m2_choice_made === true ? "m2_investigation_complete" : "m2_investigation";
+    if (typeof this.state.flags.null_affinity !== "number") this.state.flags.null_affinity = 0;
+    if (typeof this.state.flags.m3_route_attempts !== "number") this.state.flags.m3_route_attempts = 0;
+
+    if (this.state.flags.m3_contact_choice_made === true) this.state.checkpoint = "m3_threshold_complete";
+    else if (this.state.flags.m3_threshold_open === true) this.state.checkpoint = "m3_threshold_open";
+    else if (this.state.flags.m3_trace_touched === true) this.state.checkpoint = "m3_process_monitor";
+    else if (this.state.flags.m2_choice_made === true) this.state.checkpoint = "m3_threshold";
+    else if (this.state.flags.m2_log_recovered === true) this.state.checkpoint = "m2_log_recovered";
+    else this.state.checkpoint = "m2_investigation";
   }
 
   private async playIntroIfNeeded(): Promise<void> {
@@ -178,26 +212,13 @@ export class Game {
     if (id === "computer") {
       this.state.flags.m1_computer_used = true;
       this.scheduleAutosave();
+      this.os.render();
       this.os.setVisible(true);
       return;
     }
 
     if (id === "vera") {
-      if (this.state.flags.m2_choice_made === true) {
-        const told = this.state.flags.m2_told_vera === true;
-        await this.playDialogue(told ? [
-          { speaker: "V.E.R.A.", text: "Спасибо, что рассказал. Но если снова увидишь имя NULL — пожалуйста, сначала позови меня.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
-        ] : [
-          { speaker: "V.E.R.A.", text: "Ты после компьютера какой-то тихий. Всё точно в порядке?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
-        ]);
-        return;
-      }
-      const anomalySeen = this.state.flags.m1_anomaly_seen === true;
-      await this.playDialogue(anomalySeen ? [
-        { speaker: "V.E.R.A.", text: "Я тоже это видела. Но в журнале событий ничего нет. Давай пока не будем делать выводов.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
-      ] : [
-        { speaker: "V.E.R.A.", text: "Странно видеть тебя не через окно терминала. Наверное, мне нужно к этому привыкнуть.", portrait: "../assets/v2/characters/vera/portraits/vera_shy.svg" }
-      ]);
+      await this.handleVeraInteraction();
       return;
     }
 
@@ -211,23 +232,133 @@ export class Game {
     }
 
     if (id === "photo") {
-      if (!this.filesystem.exists(SEA_MEMORY)) return;
-      if (this.state.flags.m2_photo_scanned === true) {
-        await this.playDialogue([
-          { speaker: "V.E.R.A.", text: "Ты снова смотришь на море. Нашёл что-то в метаданных?", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
-        ]);
-        return;
-      }
-      const firstInspection = this.state.flags.m1_photo_inspected !== true;
-      await this.playDialogue([
-        { speaker: "V.E.R.A.", text: "Эта фотография...", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
-        { speaker: "V.E.R.A.", text: "Я никогда не была у моря. Тогда почему я узнаю этот берег?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
-      ]);
-      this.state.flags.m1_photo_inspected = true;
-      this.scheduleAutosave();
-      this.updateObjective();
-      if (firstInspection && this.state.flags.m1_anomaly_seen !== true) await this.runFirstAnomaly();
+      await this.handlePhotoInteraction();
+      return;
     }
+
+    if (id === "null_trace") {
+      await this.handleNullTraceInteraction();
+      return;
+    }
+
+    if (id === "threshold") {
+      await this.handleThresholdInteraction();
+    }
+  }
+
+  private async handleVeraInteraction(): Promise<void> {
+    if (this.state.flags.m3_contact_choice_made === true) {
+      if (this.state.flags.m3_answered_null === true) {
+        await this.playDialogue([
+          { speaker: "V.E.R.A.", text: "Ты продолжаешь смотреть на этот проход. Пожалуйста, не верь всему, что приходит оттуда.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+        ]);
+      } else {
+        await this.playDialogue([
+          { speaker: "V.E.R.A.", text: "Спасибо, что отошёл от канала. Я всё ещё не понимаю, почему он вообще смог открыться.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+        ]);
+      }
+      return;
+    }
+
+    if (this.state.flags.m3_threshold_open === true) {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "Это уже не просто повреждение интерфейса. Ты открыл маршрут туда, где HOME не должен иметь пространства.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+      ]);
+      return;
+    }
+
+    if (this.state.flags.m3_trace_touched === true) {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "После того как ты коснулся контура, OMEGA добавила Process Monitor. Я не просила систему это делать.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+      ]);
+      return;
+    }
+
+    if (this.state.flags.m2_choice_made === true) {
+      const told = this.state.flags.m2_told_vera === true;
+      await this.playDialogue(told ? [
+        { speaker: "V.E.R.A.", text: "Спасибо, что рассказал. Но если снова увидишь имя NULL — пожалуйста, сначала позови меня.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+      ] : [
+        { speaker: "V.E.R.A.", text: "Ты после компьютера какой-то тихий. Всё точно в порядке?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+      ]);
+      return;
+    }
+
+    const anomalySeen = this.state.flags.m1_anomaly_seen === true;
+    await this.playDialogue(anomalySeen ? [
+      { speaker: "V.E.R.A.", text: "Я тоже это видела. Но в журнале событий ничего нет. Давай пока не будем делать выводов.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+    ] : [
+      { speaker: "V.E.R.A.", text: "Странно видеть тебя не через окно терминала. Наверное, мне нужно к этому привыкнуть.", portrait: "../assets/v2/characters/vera/portraits/vera_shy.svg" }
+    ]);
+  }
+
+  private async handlePhotoInteraction(): Promise<void> {
+    if (!this.filesystem.exists(SEA_MEMORY)) return;
+    if (this.state.flags.m2_photo_scanned === true) {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "Ты снова смотришь на море. Нашёл что-то в метаданных?", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+      ]);
+      return;
+    }
+
+    const firstInspection = this.state.flags.m1_photo_inspected !== true;
+    await this.playDialogue([
+      { speaker: "V.E.R.A.", text: "Эта фотография...", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" },
+      { speaker: "V.E.R.A.", text: "Я никогда не была у моря. Тогда почему я узнаю этот берег?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+    ]);
+    this.state.flags.m1_photo_inspected = true;
+    this.scheduleAutosave();
+    this.updateObjective();
+    if (firstInspection && this.state.flags.m1_anomaly_seen !== true) await this.runFirstAnomaly();
+  }
+
+  private async handleNullTraceInteraction(): Promise<void> {
+    if (this.state.flags.m2_choice_made !== true) {
+      this.flashMessage("Сначала закончи разговор с V.E.R.A.");
+      return;
+    }
+    if (this.state.flags.m3_trace_touched === true) {
+      this.flashMessage(this.state.flags.m3_threshold_open === true ? "Контур стал входом" : "PROCESS MONITOR // новый модуль доступен на компьютере");
+      return;
+    }
+
+    this.state.flags.m3_trace_touched = true;
+    this.state.checkpoint = "m3_process_monitor";
+    this.renderer.triggerThresholdPulse();
+    this.scheduleAutosave();
+    this.updateObjective();
+    this.os.render();
+
+    if (this.state.flags.m2_told_vera === true) {
+      await this.playDialogue([
+        { speaker: "V.E.R.A.", text: "Подожди. Не трогай его—", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" },
+        { speaker: "SYSTEM", text: "UNINDEXED PROCESS ROUTE DETECTED // PROCESS MONITOR ENABLED" },
+        { speaker: "V.E.R.A.", text: "...Я просила сначала позвать меня.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+      ]);
+    } else {
+      await this.playDialogue([
+        { speaker: "SYSTEM", text: "UNINDEXED PROCESS ROUTE DETECTED // PROCESS MONITOR ENABLED" },
+        { speaker: "V.E.R.A.", text: "Что ты только что сделал со стеной? У меня появился системный модуль, которого секунду назад не было.", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+      ]);
+    }
+  }
+
+  private async handleThresholdInteraction(): Promise<void> {
+    if (!this.filesystem.exists(NULL_CHANNEL)) return;
+    if (this.state.flags.m3_contact_choice_made === true) {
+      if (this.state.flags.m3_answered_null === true) {
+        await this.playDialogue([
+          { speaker: "NULL", text: "BACKUP 0.3 // /ARCHIVE/VERA/0.3", portrait: NULL_PORTRAIT },
+          { speaker: "NULL", text: "ОНА НЕ ПОМНИТ, ПОТОМУ ЧТО ЕЙ НЕЛЬЗЯ ПОМНИТЬ.", portrait: NULL_PORTRAIT }
+        ]);
+      } else {
+        await this.playDialogue([
+          { speaker: "SYSTEM", text: "CHANNEL OPEN // REMOTE SIDE SILENT // BUFFER RETAINS: BACKUP 0.3" }
+        ]);
+      }
+      return;
+    }
+    await this.runNullContact();
   }
 
   private handleEvidenceInspected(path: string): void {
@@ -241,11 +372,15 @@ export class Game {
   }
 
   private handleFileRead(path: string): void {
-    if (path !== RECOVERY_LOG) return;
-    if (this.state.flags.m2_log_read !== true) {
+    if (path === RECOVERY_LOG && this.state.flags.m2_log_read !== true) {
       this.state.flags.m2_log_read = true;
       this.scheduleAutosave();
       this.updateObjective();
+      return;
+    }
+    if (path === NULL_CHANNEL && this.state.flags.m3_channel_file_read !== true) {
+      this.state.flags.m3_channel_file_read = true;
+      this.scheduleAutosave();
     }
   }
 
@@ -268,6 +403,42 @@ export class Game {
     return { ok: true, message: `RECOVERED // ${recovered.label}`, path: recovered.path };
   }
 
+  private getProcessMonitorState(): ProcessMonitorState {
+    return {
+      unlocked: this.state.flags.m3_trace_touched === true,
+      channelOpen: this.filesystem.exists(NULL_CHANNEL),
+      routeAttempts: Number(this.state.flags.m3_route_attempts ?? 0),
+      message: this.state.flags.m3_route_solved === true ? "ROUTE LOCKED // SYSTEM → NULL" : undefined
+    };
+  }
+
+  private handleProcessRouteRequested(route: string): RecoveryResponse {
+    if (this.state.flags.m3_trace_touched !== true) {
+      return { ok: false, message: "PROCESS TRACE NOT ACQUIRED" };
+    }
+    if (this.filesystem.exists(NULL_CHANNEL)) {
+      return { ok: true, message: "CHANNEL ALREADY OPEN", path: NULL_CHANNEL };
+    }
+
+    this.state.flags.m3_route_attempts = Number(this.state.flags.m3_route_attempts ?? 0) + 1;
+    const evaluation = evaluateQuarantineRoute(route);
+    if (!evaluation.ok) {
+      this.scheduleAutosave();
+      return evaluation;
+    }
+
+    const restored = this.filesystem.restoreFile(NULL_CHANNEL);
+    if (!restored) return { ok: false, message: "CHANNEL RESTORE FAILED" };
+
+    this.state.flags.m3_route_solved = true;
+    this.state.flags.m3_threshold_open = true;
+    this.state.checkpoint = "m3_threshold_open";
+    this.renderer.triggerThresholdPulse();
+    this.scheduleAutosave();
+    this.updateObjective();
+    return { ok: true, message: "ROUTE ACCEPTED // HOME TOPOLOGY UPDATED", path: NULL_CHANNEL };
+  }
+
   private async maybeResolveEvidenceChoice(): Promise<void> {
     if (this.choiceSequenceRunning || this.dialogue.isActive() || this.os.isVisible()) return;
     if (this.state.flags.m2_log_read !== true || this.state.flags.m2_choice_made === true) return;
@@ -287,7 +458,7 @@ export class Game {
       }, options);
 
       this.state.flags.m2_choice_made = true;
-      this.state.checkpoint = "m2_investigation_complete";
+      this.state.checkpoint = "m3_threshold";
       if (choice === "tell") {
         this.state.flags.m2_told_vera = true;
         this.state.flags.vera_trust = Math.min(100, Number(this.state.flags.vera_trust ?? 50) + 5);
@@ -308,6 +479,62 @@ export class Game {
       this.flashMessage("DECISION RECORDED // HOME state changed");
     } finally {
       this.choiceSequenceRunning = false;
+    }
+  }
+
+  private async runNullContact(): Promise<void> {
+    if (this.nullSequenceRunning) return;
+    this.nullSequenceRunning = true;
+    try {
+      this.state.flags.m3_null_contact = true;
+      this.renderer.triggerThresholdPulse();
+      this.scheduleAutosave();
+
+      await this.playDialogue(NULL_FIRST_CONTACT.map(text => ({
+        speaker: "NULL",
+        text,
+        portrait: NULL_PORTRAIT
+      })));
+
+      const choice = await this.playChoice({
+        speaker: "NULL",
+        text: "ТЫ СЛУШАЕШЬ?",
+        portrait: NULL_PORTRAIT
+      }, [
+        { id: "listen", label: "Ответить: «Я слушаю»", variant: "normal" },
+        { id: "refuse", label: "Не отвечать и отойти", variant: "quiet" }
+      ]);
+
+      this.state.flags.m3_contact_choice_made = true;
+      this.state.checkpoint = "m3_threshold_complete";
+
+      if (choice === "listen") {
+        this.state.flags.m3_answered_null = true;
+        this.state.flags.null_affinity = Math.min(100, Number(this.state.flags.null_affinity ?? 0) + 5);
+        if (this.state.flags.m2_told_vera === true) {
+          this.state.flags.vera_trust = Math.max(0, Number(this.state.flags.vera_trust ?? 50) - 4);
+        }
+        await this.playDialogue([
+          { speaker: "NULL", text: "ТОГДА НАЙДИ BACKUP 0.3 РАНЬШЕ НЕЁ.", portrait: NULL_PORTRAIT },
+          { speaker: "V.E.R.A.", text: this.state.flags.m2_told_vera === true ? "Ты открыл канал. Я просила не делать этого без меня." : "Что... только что ответило тебе из стены?", portrait: "../assets/v2/characters/vera/portraits/vera_nervous.svg" }
+        ]);
+      } else {
+        this.state.flags.m3_refused_null = true;
+        this.state.flags.null_affinity = Math.max(-100, Number(this.state.flags.null_affinity ?? 0) - 3);
+        if (this.state.flags.m2_told_vera === true) {
+          this.state.flags.vera_trust = Math.min(100, Number(this.state.flags.vera_trust ?? 50) + 2);
+        }
+        await this.playDialogue([
+          { speaker: "SYSTEM", text: "REMOTE SIDE SILENT // CHANNEL REMAINS OPEN // BUFFER: BACKUP 0.3" },
+          { speaker: "V.E.R.A.", text: "Хорошо. Не отвечай ему. Я попробую понять, как закрыть этот маршрут.", portrait: "../assets/v2/characters/vera/portraits/vera_concerned.svg" }
+        ]);
+      }
+
+      this.scheduleAutosave();
+      this.updateObjective();
+      this.flashMessage("THRESHOLD CONTACT RECORDED");
+    } finally {
+      this.nullSequenceRunning = false;
     }
   }
 
@@ -353,8 +580,16 @@ export class Game {
       objective = { code: "read_log", title: "Прочитай восстановленный журнал", detail: "Он появился в разделе SYSTEM LOGS." };
     } else if (this.state.flags.m2_choice_made !== true) {
       objective = { code: "return_home", title: "Вернись к V.E.R.A.", detail: "Закрой OMEGA OS. Она заметила изменение системного индекса." };
+    } else if (this.state.flags.m3_trace_touched !== true) {
+      objective = { code: "touch_trace", title: "Исследуй контур на правой стене", detail: "Восстановленный NULL-log оставил физический след в HOME." };
+    } else if (this.state.flags.m3_threshold_open !== true) {
+      objective = { code: "route_process", title: "Открой Process Monitor", detail: "На компьютере появился новый раздел PROCESS. Восстанови инициатора quarantine route по журналу." };
+    } else if (this.state.flags.m3_contact_choice_made !== true) {
+      objective = { code: "approach_threshold", title: "Вернись к открывшемуся проходу", detail: "SYSTEM → NULL изменил топологию HOME. Теперь контур отвечает." };
+    } else if (this.state.flags.m3_answered_null === true) {
+      objective = { code: "m3_complete_listen", title: "Найди BACKUP 0.3", detail: "NULL утверждает, что старая версия V.E.R.A. помнит удалённое событие." };
     } else {
-      objective = { code: "m2_complete", title: "HOME изменился", detail: "На правой стене появился слабый контур, которого раньше не было. Запомни его." };
+      objective = { code: "m3_complete_refuse", title: "BACKUP 0.3 остался в буфере", detail: "Ты не ответил NULL, но SYSTEM сохранила название резервной копии." };
     }
     this.objectives.set(objective);
   }
@@ -380,7 +615,7 @@ export class Game {
   private async resetHome(): Promise<void> {
     await this.saves.clear(AUTOSAVE_SLOT).catch(() => undefined);
     this.state = createInitialGameState();
-    this.upgradeStateForInvestigation();
+    this.upgradeStateForThreshold();
     this.filesystem.replaceState(this.state);
     this.renderer.syncFromState(this.state);
     this.events.emit("state:replaced", { state: this.state });

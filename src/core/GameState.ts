@@ -4,15 +4,25 @@ export interface FileMutationState {
   deleted: boolean;
 }
 
+export interface PlayerTransform {
+  position: [number, number, number];
+  yaw: number;
+  pitch: number;
+}
+
+export interface SceneReturnPoint {
+  sceneId: string;
+  player: PlayerTransform;
+}
+
 export interface OmegaGameState {
   schemaVersion: number;
   checkpoint: string;
-  world: { activeScene: string };
-  player: {
-    position: [number, number, number];
-    yaw: number;
-    pitch: number;
+  world: {
+    activeScene: string;
+    returnPoint?: SceneReturnPoint;
   };
+  player: PlayerTransform;
   filesystem: { entries: Record<string, FileMutationState> };
   flags: Record<string, boolean | number | string | null>;
   meta: { updatedAt: number };
@@ -39,9 +49,13 @@ export function validateGameState(value: unknown): value is OmegaGameState {
   const state = value as Partial<OmegaGameState>;
   return state.schemaVersion === SAVE_SCHEMA_VERSION
     && typeof state.checkpoint === "string"
+    && !!state.world
+    && typeof state.world.activeScene === "string"
     && !!state.player
     && Array.isArray(state.player.position)
     && state.player.position.length === 3
+    && typeof state.player.yaw === "number"
+    && typeof state.player.pitch === "number"
     && !!state.filesystem
     && typeof state.filesystem.entries === "object";
 }

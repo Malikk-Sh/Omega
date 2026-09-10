@@ -39,6 +39,10 @@ export class WorldBindingSystem {
     }
   }
 
+  clearTargets(): void {
+    this.targets.clear();
+  }
+
   private evaluate(binding: WorldBindingDefinition): void {
     const target = this.targets.get(binding.targetId);
     if (!target) return;

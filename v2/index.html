@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#11131b">
-  <title>OMEGA — THRESHOLD</title>
+  <title>OMEGA — BACKUP 0.3</title>
   <link rel="stylesheet" href="./milestone1.css">
   <link rel="stylesheet" href="./milestone2.css">
   <link rel="stylesheet" href="./milestone3.css">
+  <link rel="stylesheet" href="./milestone4.css">
   <script type="importmap">
   {
     "imports": {
@@ -21,7 +22,7 @@
   <canvas id="m0-world" aria-label="HOME neural-space apartment and threshold"></canvas>
 
   <header class="m1-hud">
-    <div class="m1-brand"><strong>OMEGA</strong><small>NEURAL SPACE // HOME</small></div>
+    <div class="m1-brand"><strong>OMEGA</strong><small data-scene-label>NEURAL SPACE // HOME</small></div>
     <span class="m1-memory-link" data-binding-status>MEMORY LINK: ...</span>
   </header>
 
@@ -60,6 +61,12 @@
 
   <div id="m0-os" class="m0-os" hidden aria-hidden="true"></div>
   <div id="m0-toast" class="m0-toast" role="status" aria-live="polite"></div>
+  <div id="m4-scene-transition" class="m4-scene-transition" hidden aria-hidden="true">
+    <div>
+      <strong data-scene-transition-title>MOUNTING SNAPSHOT</strong>
+      <small data-scene-transition-detail>OMEGA scene router</small>
+    </div>
+  </div>
   <pre id="m0-fatal" class="m0-fatal" hidden></pre>
 
   <script type="module" src="../js/v2/runtime/main.js"></script>

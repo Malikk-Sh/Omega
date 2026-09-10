@@ -2,6 +2,12 @@ import * as THREE from "three";
 import type { InputManager } from "../player/InputManager.js";
 import type { OmegaGameState } from "../core/GameState.js";
 import type { WorldTarget } from "../world/WorldBinding.js";
+import {
+  BACKUP_03_SCENE,
+  HOME_SCENE,
+  SCENE_INTERACTION_IDS,
+  type OmegaSceneId
+} from "../world/SceneRouter.js";
 
 export interface InteractionFocus {
   id: string;
@@ -13,11 +19,18 @@ export interface InteractionCallbacks {
   onInteract?: (id: string) => void;
 }
 
+interface SceneBounds {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
 export class WorldRenderer {
   private readonly scene = new THREE.Scene();
   private readonly camera: any;
   private readonly renderer: any;
-  private readonly worldRoot = new THREE.Group();
+  private worldRoot = new THREE.Group();
   private readonly entities = new Map<string, any>();
   private readonly raycaster = new THREE.Raycaster();
   private readonly interactables: any[] = [];
@@ -36,24 +49,20 @@ export class WorldRenderer {
   private nullTrace: any = null;
   private nullTraceMaterial: any = null;
   private thresholdCorridor: any = null;
-  private thresholdMaterials: any[] = [];
+  private readonly thresholdMaterials: any[] = [];
+  private sceneBounds: SceneBounds = { minX: -3, maxX: 3, minZ: -4, maxZ: 4 };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly input: InputManager,
     initialState: OmegaGameState
   ) {
-    this.scene.background = new THREE.Color(0x090b12);
     this.camera = new THREE.PerspectiveCamera(68, 1, 0.05, 50);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene.add(this.worldRoot);
-
-    this.yaw = initialState.player.yaw;
-    this.pitch = initialState.player.pitch;
-    this.camera.position.set(...initialState.player.position);
-    this.buildApartment();
+    this.mountScene(initialState.world.activeScene === BACKUP_03_SCENE ? BACKUP_03_SCENE : HOME_SCENE, initialState);
     this.resize();
     window.addEventListener("resize", this.resize);
   }
@@ -98,10 +107,25 @@ export class WorldRenderer {
     };
   }
 
+  mountScene(sceneId: OmegaSceneId, state: OmegaGameState): void {
+    this.clearWorld();
+    if (sceneId === BACKUP_03_SCENE) {
+      this.scene.background = new THREE.Color(0xd9dde0);
+      this.sceneBounds = { minX: -2.55, maxX: 2.55, minZ: -3.0, maxZ: 3.0 };
+      this.buildBackup03();
+    } else {
+      this.scene.background = new THREE.Color(0x090b12);
+      this.sceneBounds = { minX: -3.0, maxX: 3.0, minZ: -4.0, maxZ: 4.0 };
+      this.buildApartment();
+    }
+    this.syncFromState(state);
+  }
+
   syncFromState(state: OmegaGameState): void {
     this.camera.position.set(...state.player.position);
     this.yaw = state.player.yaw;
     this.pitch = state.player.pitch;
+    this.setFocused(null);
   }
 
   writePlayerState(state: OmegaGameState): void {
@@ -121,7 +145,30 @@ export class WorldRenderer {
     this.running = false;
     cancelAnimationFrame(this.frameHandle);
     window.removeEventListener("resize", this.resize);
+    this.clearWorld();
     this.renderer.dispose();
+  }
+
+  private clearWorld(): void {
+    this.setFocused(null);
+    this.scene.remove(this.worldRoot);
+    this.worldRoot.traverse((object: any) => {
+      object.geometry?.dispose?.();
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) material?.dispose?.();
+    });
+    this.worldRoot = new THREE.Group();
+    this.scene.add(this.worldRoot);
+    this.entities.clear();
+    this.interactables.length = 0;
+    this.thresholdMaterials.length = 0;
+    this.anomalyShadow = null;
+    this.warmLight = null;
+    this.nullTrace = null;
+    this.nullTraceMaterial = null;
+    this.thresholdCorridor = null;
+    this.anomalyUntil = 0;
+    this.thresholdPulseUntil = 0;
   }
 
   private readonly resize = (): void => {
@@ -154,8 +201,8 @@ export class WorldRenderer {
       const rightZ = -Math.sin(this.yaw);
       this.camera.position.x += (rightX * this.input.move.x - forwardX * this.input.move.y) * speed * dt;
       this.camera.position.z += (rightZ * this.input.move.x - forwardZ * this.input.move.y) * speed * dt;
-      this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, -3.0, 3.0);
-      this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, -4.0, 4.0);
+      this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, this.sceneBounds.minX, this.sceneBounds.maxX);
+      this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, this.sceneBounds.minZ, this.sceneBounds.maxZ);
       this.camera.position.y = 1.62;
     }
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
@@ -256,7 +303,7 @@ export class WorldRenderer {
     this.warmLight.position.set(-1.8, 2.35, -1.2);
     const windowLight = new THREE.DirectionalLight(0x748dff, 1.5);
     windowLight.position.set(-2, 2.5, -4);
-    this.scene.add(ambient, this.warmLight, windowLight);
+    this.worldRoot.add(ambient, this.warmLight, windowLight);
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(7, 9),
@@ -310,10 +357,10 @@ export class WorldRenderer {
     monitor.position.set(1.62, 1.25, -3.21);
     this.worldRoot.add(monitor);
     this.entities.set("apartment.computer", monitor);
-    this.registerInteractable("computer", "Открыть OMEGA OS", monitor);
+    this.registerInteractable(SCENE_INTERACTION_IDS.home.computer, "Открыть OMEGA OS", monitor);
 
     const mug = this.box([0.22, 0.25, 0.22], 0xd694ac, [2.42, 0.98, -2.84], 0.6);
-    this.registerInteractable("mug", "Осмотреть кружку", mug);
+    this.registerInteractable(SCENE_INTERACTION_IDS.home.mug, "Осмотреть кружку", mug);
 
     const frameGroup = new THREE.Group();
     const frame = new THREE.Mesh(
@@ -334,7 +381,7 @@ export class WorldRenderer {
     frameGroup.position.set(-0.25, 1.72, -4.34);
     this.worldRoot.add(frameGroup);
     this.entities.set("apartment.photo_frame", frameGroup);
-    this.registerInteractable("photo", "Осмотреть фотографию", frameGroup);
+    this.registerInteractable(SCENE_INTERACTION_IDS.home.photo, "Осмотреть фотографию", frameGroup);
 
     const vera = new THREE.Group();
     const body = new THREE.Mesh(
@@ -362,7 +409,7 @@ export class WorldRenderer {
     vera.rotation.y = 0.25;
     this.worldRoot.add(vera);
     this.entities.set("apartment.vera", vera);
-    this.registerInteractable("vera", "Поговорить с V.E.R.A.", vera);
+    this.registerInteractable(SCENE_INTERACTION_IDS.home.vera, "Поговорить с V.E.R.A.", vera);
 
     const shelf = this.box([0.75, 2.3, 0.32], 0x3a2928, [2.75, 1.15, 1.1]);
     this.box([0.62, 0.06, 0.33], 0x6a4542, [2.75, 0.55, 1.08]);
@@ -408,7 +455,7 @@ export class WorldRenderer {
     this.nullTrace.visible = false;
     this.worldRoot.add(this.nullTrace);
     this.entities.set("apartment.null_trace", this.nullTrace);
-    this.registerInteractable("null_trace", "Коснуться контура", this.nullTrace);
+    this.registerInteractable(SCENE_INTERACTION_IDS.home.nullTrace, "Коснуться контура", this.nullTrace);
   }
 
   private buildThresholdCorridor(): void {
@@ -459,6 +506,115 @@ export class WorldRenderer {
     this.thresholdCorridor.visible = false;
     this.worldRoot.add(this.thresholdCorridor);
     this.entities.set("apartment.threshold_corridor", this.thresholdCorridor);
-    this.registerInteractable("threshold", "Вслушаться в проход", this.thresholdCorridor);
+    this.registerInteractable(SCENE_INTERACTION_IDS.home.threshold, "Вслушаться в проход", this.thresholdCorridor);
+  }
+
+  private buildBackup03(): void {
+    const ambient = new THREE.AmbientLight(0xffffff, 1.65);
+    const keyLight = new THREE.DirectionalLight(0xe8f8ff, 2.1);
+    keyLight.position.set(-2, 4, 2);
+    this.worldRoot.add(ambient, keyLight);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 7),
+      new THREE.MeshStandardMaterial({ color: 0xe6e8e8, roughness: 0.96 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    this.worldRoot.add(floor);
+
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xf1f2f0, roughness: 1 });
+    const back = new THREE.Mesh(new THREE.BoxGeometry(6, 3.4, 0.1), wallMat);
+    back.position.set(0, 1.7, -3.5);
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.4, 7), wallMat);
+    left.position.set(-3, 1.7, 0);
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.4, 7), wallMat);
+    right.position.set(3, 1.7, 0);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(6, 0.08, 7), wallMat);
+    ceiling.position.set(0, 3.36, 0);
+    this.worldRoot.add(back, left, right, ceiling);
+
+    for (let x = -2.5; x <= 2.5; x += 0.5) this.box([0.012, 0.008, 6.8], 0xb7bec1, [x, 0.007, 0], 1);
+    for (let z = -3; z <= 3; z += 0.5) this.box([5.8, 0.008, 0.012], 0xb7bec1, [0, 0.008, z], 1);
+
+    const vera03 = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.46, 0.82, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0xd9e7e9, roughness: 0.9 })
+    );
+    body.position.y = 0.7;
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.42, 0.42, 0.38),
+      new THREE.MeshStandardMaterial({ color: 0xe8d8d0, roughness: 0.95 })
+    );
+    head.position.y = 1.32;
+    const visor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.05, 0.018),
+      new THREE.MeshBasicMaterial({ color: 0x55a7b8 })
+    );
+    visor.position.set(0, 1.34, 0.198);
+    vera03.add(body, head, visor);
+    vera03.position.set(-0.72, 0, -1.15);
+    this.worldRoot.add(vera03);
+    this.entities.set("backup03.vera", vera03);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup03.vera, "Поговорить с V.E.R.A. 0.3", vera03);
+
+    const cupPedestal = this.box([0.72, 0.64, 0.72], 0xcdd2d2, [-1.75, 0.32, 0.4]);
+    const cup = this.box([0.25, 0.28, 0.25], 0xf3f3ef, [-1.75, 0.78, 0.4], 0.7);
+    cupPedestal.userData.decorative = true;
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup03.cup, "Образец 01 // кружка", cup);
+
+    const photoPedestal = this.box([0.72, 0.64, 0.72], 0xcdd2d2, [0, 0.32, -2.35]);
+    const photo = new THREE.Group();
+    const photoBack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.045), new THREE.MeshStandardMaterial({ color: 0xbec3c3, roughness: 0.9 }));
+    const photoFace = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.32), new THREE.MeshBasicMaterial({ color: 0xd6c4a8 }));
+    photoFace.position.z = 0.025;
+    photo.add(photoBack, photoFace);
+    photo.position.set(0, 0.93, -2.35);
+    this.worldRoot.add(photo);
+    photoPedestal.userData.decorative = true;
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup03.photo, "Образец 02 // изображение", photo);
+
+    const relayPedestal = this.box([0.72, 0.64, 0.72], 0xcdd2d2, [1.75, 0.32, 0.4]);
+    const relay = this.box([0.36, 0.3, 0.34], 0x5f6d73, [1.75, 0.78, 0.4], 0.55);
+    const relayMark = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.05), new THREE.MeshBasicMaterial({ color: 0x78e6ff, side: THREE.DoubleSide }));
+    relayMark.position.set(1.75, 0.8, 0.574);
+    this.worldRoot.add(relayMark);
+    relayPedestal.userData.decorative = true;
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup03.relay, "Образец 03 // реле", relay);
+
+    const consoleDesk = this.box([1.55, 0.1, 0.68], 0xb5bbbc, [1.55, 0.8, -2.62]);
+    const consoleScreen = new THREE.Mesh(
+      new THREE.BoxGeometry(0.92, 0.56, 0.07),
+      new THREE.MeshStandardMaterial({ color: 0x344448, emissive: 0x2a7786, emissiveIntensity: 0.8, roughness: 0.65 })
+    );
+    consoleScreen.position.set(1.55, 1.25, -2.85);
+    this.worldRoot.add(consoleScreen);
+    consoleDesk.userData.decorative = true;
+    this.entities.set("backup03.console", consoleScreen);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup03.console, "Открыть training console", consoleScreen);
+
+    const returnPortal = new THREE.Group();
+    const voidPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.92, 1.9),
+      new THREE.MeshBasicMaterial({ color: 0x10161a, side: THREE.DoubleSide })
+    );
+    const portalEdgeMat = new THREE.MeshBasicMaterial({ color: 0x69cbd7, side: THREE.DoubleSide });
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(1.02, 0.025), portalEdgeMat);
+    top.position.y = 0.97;
+    const bottom = top.clone();
+    bottom.position.y = -0.97;
+    const edgeLeft = new THREE.Mesh(new THREE.PlaneGeometry(0.025, 1.96), portalEdgeMat);
+    edgeLeft.position.x = -0.5;
+    const edgeRight = edgeLeft.clone();
+    edgeRight.position.x = 0.5;
+    returnPortal.add(voidPlane, top, bottom, edgeLeft, edgeRight);
+    returnPortal.position.set(0, 1.16, 3.34);
+    this.worldRoot.add(returnPortal);
+    this.entities.set("backup03.return", returnPortal);
+    this.registerInteractable(SCENE_INTERACTION_IDS.backup03.returnThreshold, "Вернуться в HOME", returnPortal);
+
+    this.box([1.3, 0.04, 0.04], 0x67848a, [0, 2.78, -3.42], 1);
+    this.box([0.04, 0.34, 0.04], 0x67848a, [-0.65, 2.62, -3.42], 1);
+    this.box([0.04, 0.34, 0.04], 0x67848a, [0.65, 2.62, -3.42], 1);
   }
 }

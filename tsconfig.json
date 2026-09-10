@@ -11,7 +11,7 @@
     "exactOptionalPropertyTypes": false,
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "sourceMap": true
+    "sourceMap": false
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"]
 }

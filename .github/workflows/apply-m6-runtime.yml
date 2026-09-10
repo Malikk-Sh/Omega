@@ -1,0 +1,32 @@
+name: Apply M6 SEA 2017 runtime
+
+on:
+  push:
+    branches:
+      - milestone-6-sea-2017-runtime
+    paths:
+      - .github/workflows/apply-m6-runtime.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: milestone-6-sea-2017-runtime
+      - name: Apply renderer, OMEGA OS and game wiring
+        run: |
+          node scripts/apply-m6-renderer.mjs
+          node scripts/apply-m6-os.mjs
+          node scripts/apply-m6-game.mjs
+      - name: Commit runtime wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/render/WorldRenderer.ts src/omega-os/OmegaOS.ts src/app/Game.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "M6: wire SEA 2017 beach runtime"
+          git push

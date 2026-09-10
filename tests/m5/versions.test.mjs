@@ -12,9 +12,15 @@ import {
   validateVersionsDefinition
 } from '../../js/v2/runtime/story/VersionsProtocol.js';
 import { HOME_SCENE } from '../../js/v2/runtime/world/SceneRouter.js';
+import {
+  listRoutableVersions,
+  resolveVersionRoute,
+  validateVersionRouteTargets
+} from '../../js/v2/runtime/world/VersionRoute.js';
 
 const definition = JSON.parse(await readFile(new URL('../../data/v2/versions-m5.json', import.meta.url), 'utf8'));
 assert.deepEqual(validateVersionsDefinition(definition), [], 'M5 authored version definition must validate');
+assert.deepEqual(validateVersionRouteTargets(definition), [], 'M5 version scene targets must be unique and distinct from HOME');
 
 const state = createInitialGameState(8000);
 upgradeStateForBackup03(state);
@@ -43,18 +49,30 @@ assert.deepEqual(
 assert.equal(isVersionUnlocked(state, definition, 'vera_1_0'), true, 'VERA_1_0 must unlock after M4 reconciliation');
 assert.equal(isVersionUnlocked(state, definition, 'vera_2_6'), false, 'VERA_2_6 must remain locked before VERA_1_0 completion');
 
+assert.deepEqual(
+  listRoutableVersions(state, definition).map(route => route.versionId),
+  ['vera_0_3', 'vera_1_0'],
+  'route layer must expose only versions unlocked by canonical state'
+);
+assert.equal(resolveVersionRoute(state, definition, 'vera_1_0').route?.sceneId, 'backup_1_0', 'VERA_1_0 must resolve to its authored scene target');
+const lockedRoute = resolveVersionRoute(state, definition, 'vera_2_6');
+assert.equal(lockedRoute.ok, false, 'route layer must reject a locked version even when its scene metadata exists');
+assert.match(lockedRoute.message, /m5_v10_complete/, 'locked route response must identify the canonical unlock flag');
+
 state.flags.m5_v10_complete = true;
 assert.deepEqual(
   getUnlockedVersionIds(state, definition),
   ['vera_0_3', 'vera_1_0', 'vera_2_6'],
   'completing VERA_1_0 must unlock VERA_2_6 only'
 );
+assert.equal(resolveVersionRoute(state, definition, 'vera_2_6').route?.sceneId, 'backup_2_6', 'newly unlocked VERA_2_6 must become routable without router-specific hardcoding');
 state.flags.m5_v26_complete = true;
 assert.deepEqual(
   getUnlockedVersionIds(state, definition),
   ['vera_0_3', 'vera_1_0', 'vera_2_6', 'vera_4_1'],
   'completing VERA_2_6 must unlock the final VERA_4_1 snapshot'
 );
+assert.equal(resolveVersionRoute(state, definition, 'vera_4_1').route?.returnSceneId, HOME_SCENE, 'all version routes must return through canonical HOME');
 
 const evidence = definition.syntheticPhotograph;
 assert.deepEqual(
@@ -102,5 +120,6 @@ legacyM4.flags.m4_home_reaction_seen = true;
 upgradeStateForVersions(legacyM4);
 assert.equal(legacyM4.flags.m5_v10_entered, false, 'upgrading an older M4 save must add M5 defaults without fake progress');
 assert.equal(isVersionUnlocked(legacyM4, definition, 'vera_1_0'), true, 'an upgraded completed-M4 save must immediately expose VERA_1_0');
+assert.deepEqual(listRoutableVersions(legacyM4, definition).map(route => route.sceneId), ['backup_1_0'], 'legacy completed-M4 save must route only to VERA_1_0 until the older M3 route flag is present');
 
 console.log('M5 VERSIONS foundation regression: PASS');

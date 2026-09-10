@@ -1,0 +1,25 @@
+{
+  "entries": [
+    { "path": "/memories", "type": "directory", "label": "memories", "parent": "/" },
+    {
+      "path": "/memories/sea_2017.img",
+      "type": "file",
+      "label": "Море 2017.img",
+      "parent": "/memories",
+      "mime": "image/x-omega-memory",
+      "content": "A damaged shoreline memory. Timestamp metadata does not match the current simulation clock.",
+      "deletable": true,
+      "restorable": true
+    },
+    {
+      "path": "/memories/vera_note.txt",
+      "type": "file",
+      "label": "vera_note.txt",
+      "parent": "/memories",
+      "mime": "text/plain",
+      "content": "I know the sound of waves, but I do not remember ever seeing the sea.",
+      "deletable": false,
+      "restorable": false
+    }
+  ]
+}

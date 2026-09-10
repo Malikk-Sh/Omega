@@ -15,7 +15,11 @@
   "archiveKey": {
     "id": "sea_2017_hidden_archive_key",
     "value": "M017-SEA-ARCHIVE",
-    "sourceHint": "Cross-check the pre-persona HUMAN_CONTEXT archive with the signed post-incident Morr records."
+    "sourceHint": "Cross-check the pre-persona HUMAN_CONTEXT archive with the signed post-incident Morr containment specification.",
+    "sourceEvidencePaths": [
+      "/backups/vera_0_3/archive/human_source.index",
+      "/backups/vera_4_1/evidence/morr_null_spec.note"
+    ]
   },
   "index": {
     "fields": [

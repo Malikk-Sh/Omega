@@ -1,11 +1,11 @@
-import { EventBus } from "../../m0/core/EventBus.js";
-import { createInitialGameState } from "../../m0/core/GameState.js";
-import { IndexedDbSaveAdapter, SaveManager } from "../../m0/core/SaveManager.js";
-import { AssetManager } from "../../m0/core/AssetManager.js";
-import { ContentDB } from "../../m0/core/ContentDB.js";
-import { FileSystemService } from "../../m0/omega-os/FileSystemService.js";
-import { WorldBindingSystem } from "../../m0/world/WorldBinding.js";
-import { InputManager } from "../../m0/player/InputManager.js";
+import { EventBus } from "../core/EventBus.js";
+import { createInitialGameState } from "../core/GameState.js";
+import { IndexedDbSaveAdapter, SaveManager } from "../core/SaveManager.js";
+import { AssetManager } from "../core/AssetManager.js";
+import { ContentDB } from "../core/ContentDB.js";
+import { FileSystemService } from "../omega-os/FileSystemService.js";
+import { WorldBindingSystem } from "../world/WorldBinding.js";
+import { InputManager } from "../player/InputManager.js";
 import { WorldRenderer } from "../render/WorldRenderer.js";
 import { OmegaOS } from "../omega-os/OmegaOS.js";
 import { DialogueController } from "../story/DialogueController.js";
@@ -93,6 +93,7 @@ export class Game {
       this.scheduleAutosave();
       if (path === SEA_MEMORY) {
         this.updateStatus(!deleted);
+        this.updateInteractionPrompt(null);
         if (!this.dialogue.isActive()) this.flashMessage(deleted ? "Связь с памятью разорвана" : "Память восстановлена");
       }
     });

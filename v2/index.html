@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#11131b">
-  <title>OMEGA — HOME</title>
+  <title>OMEGA — INVESTIGATION</title>
   <link rel="stylesheet" href="./milestone1.css">
+  <link rel="stylesheet" href="./milestone2.css">
   <script type="importmap">
   {
     "imports": {
@@ -23,10 +24,10 @@
     <span class="m1-memory-link" data-binding-status>MEMORY LINK: ...</span>
   </header>
 
-  <section class="m1-objective" aria-label="Current objective">
+  <section class="m1-objective" data-objective-root aria-label="Current objective">
     <small>ТЕКУЩАЯ ЦЕЛЬ</small>
-    <strong>Осмотрись и поговори с V.E.R.A.</strong>
-    <span>Компьютер связывает HOME с файловой системой OMEGA.</span>
+    <strong data-objective-title>Синхронизация...</strong>
+    <span data-objective-detail>Проверка состояния HOME.</span>
   </section>
 
   <div class="m1-crosshair" aria-hidden="true"><span></span></div>
@@ -50,7 +51,8 @@
     <div class="m1-dialogue-copy">
       <strong data-dialogue-speaker>V.E.R.A.</strong>
       <p data-dialogue-text></p>
-      <small>Нажми, чтобы продолжить</small>
+      <div class="m2-dialogue-choices" data-dialogue-choices hidden></div>
+      <small data-dialogue-hint>Нажми, чтобы продолжить</small>
     </div>
     <button type="button" data-dialogue-next aria-label="Продолжить диалог">›</button>
   </section>
@@ -59,6 +61,6 @@
   <div id="m0-toast" class="m0-toast" role="status" aria-live="polite"></div>
   <pre id="m0-fatal" class="m0-fatal" hidden></pre>
 
-  <script type="module" src="../js/v2/m1/main.js"></script>
+  <script type="module" src="../js/v2/m2/main.js"></script>
 </body>
 </html>

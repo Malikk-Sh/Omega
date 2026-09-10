@@ -1,17 +1,19 @@
 {
   "name": "omega-web-game",
   "private": true,
-  "version": "0.10.0-m5-vera-4-1",
+  "version": "0.11.0-m6-foundation",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs && node tests/m5/versions.test.mjs && node tests/m5/summer-house.test.mjs && node tests/m5/rollback-audit.test.mjs && node tests/m5/research-office.test.mjs && node tests/m5/incident-reconstruction.test.mjs && node tests/m5/containment-night.test.mjs",
+    "build": "tsc -p tsconfig.json && node tests/m1/home.test.mjs && node tests/m2/investigation.test.mjs && node tests/m3/threshold.test.mjs && node tests/m4/backup03.test.mjs && node tests/m5/versions.test.mjs && node tests/m5/summer-house.test.mjs && node tests/m5/rollback-audit.test.mjs && node tests/m5/research-office.test.mjs && node tests/m5/incident-reconstruction.test.mjs && node tests/m5/containment-night.test.mjs && node tests/m6/sea-index.test.mjs",
     "test:m0": "node tests/m0/core.test.mjs",
     "test:m1": "node tests/m1/home.test.mjs",
     "test:m2": "node tests/m2/investigation.test.mjs",
     "test:m3": "node tests/m3/threshold.test.mjs",
     "test:m4": "node tests/m4/backup03.test.mjs",
     "test:m5": "node tests/m5/versions.test.mjs && node tests/m5/summer-house.test.mjs && node tests/m5/rollback-audit.test.mjs && node tests/m5/research-office.test.mjs && node tests/m5/incident-reconstruction.test.mjs && node tests/m5/containment-night.test.mjs",
+    "test:m6": "node tests/m6/sea-index.test.mjs",
     "check:m5": "npm run build",
+    "check:m6": "npm run build",
     "ai:sync": "node scripts/update-ai-context.mjs",
     "ai:check": "node scripts/update-ai-context.mjs --check"
   },
